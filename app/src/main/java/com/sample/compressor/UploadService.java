@@ -78,7 +78,7 @@ public class UploadService extends Service {
                 // function for uploading
                 Log.d("compressor","compress called");
                 compressVideo();
-                //stopSelf();
+                stopSelf();
             }
         });
         return START_STICKY;
