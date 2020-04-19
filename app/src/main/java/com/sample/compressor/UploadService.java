@@ -213,4 +213,11 @@ public class UploadService extends Service {
     public IBinder onBind(Intent intent) {
         return null;
     }
+
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d("compressor","service stopped called");
+    }
 }
