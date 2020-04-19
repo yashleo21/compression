@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Compressor</string>
+
+    <string name="notify_channel_upload_name">Upload Progress</string>
+    <string name="notify_channel_upload_description">Progress updates for uploads</string>
+</resources>
