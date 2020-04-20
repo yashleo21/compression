@@ -17,6 +17,7 @@ class StartActivity:AppCompatActivity() {
     private fun clickListeners(){
         imageCompression.setOnClickListener { openImageCompressionView()}
         videoCompression.setOnClickListener { openVideoCompressionView() }
+        videoUpload.setOnClickListener { openVideoToFilestack() }
 
     }
 
@@ -29,4 +30,10 @@ class StartActivity:AppCompatActivity() {
         val `in` = Intent(this, VideoCompressActivity::class.java)
         startActivity(`in`)
     }
+
+    private fun openVideoToFilestack(){
+        val `in` = Intent(this, FileStackActivity::class.java)
+        startActivity(`in`)
+    }
+
 }

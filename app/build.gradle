@@ -8,11 +8,11 @@ android {
 
     defaultConfig {
         applicationId "com.sample.compressor"
-        minSdkVersion 16
+        minSdkVersion 19
         targetSdkVersion 29
         versionCode 1
         versionName "1.0"
-
+        multiDexEnabled true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -36,8 +36,12 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
     implementation 'id.zelory:compressor:3.0.0'
     implementation project(':videocompressor')
+    implementation 'com.filestack:filestack-android:5.0.0-0.3.0'
     //Dexter runtime permissions
     implementation 'com.karumi:dexter:6.0.2'
+    implementation 'com.squareup.picasso:picasso:2.5.2'
+    implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
+    implementation 'com.android.support:multidex:1.0.3'
 
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.2.0'
     implementation "android.arch.work:work-runtime:1.0.1"
