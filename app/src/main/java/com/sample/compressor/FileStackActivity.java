@@ -1,3 +1,4 @@
+
 package com.sample.compressor;
 
 import android.content.BroadcastReceiver;
@@ -156,3 +157,4 @@ public class FileStackActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(restartService);
     }
 }
+

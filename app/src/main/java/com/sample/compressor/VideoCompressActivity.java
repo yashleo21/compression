@@ -31,6 +31,10 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
+import com.filestack.Client;
+import com.filestack.Config;
+import com.filestack.FileLink;
+
 import com.karumi.dexter.Dexter;
 import com.karumi.dexter.listener.PermissionDeniedResponse;
 import com.karumi.dexter.listener.PermissionGrantedResponse;
@@ -59,25 +63,30 @@ public class VideoCompressActivity extends AppCompatActivity {
     private String outputPath;
 
     private ProgressBar pb_compress;
-    private UploadReceiver uploadReceiver;
+    private CompressReceiver compressReceiver;
+
     private RestartReceiver restartService;
     NotificationManager notificationManager;
 
+
     private long startTime, endTime;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.video_layout);
 
-        IntentFilter filter = new IntentFilter(CompressorConstant.BROADCAST_UPLOAD);
+
+        IntentFilter filter = new IntentFilter(CompressorConstant.BROADCAST_COMPRESS_UPLOAD);
         IntentFilter filters = new IntentFilter(CompressorConstant.BROADCAST_STOPPED);
 
-        uploadReceiver = new UploadReceiver();
+        compressReceiver = new CompressReceiver();
         restartService = new RestartReceiver();
-        LocalBroadcastManager.getInstance(this).registerReceiver(uploadReceiver, filter);
+        LocalBroadcastManager.getInstance(this).registerReceiver(compressReceiver, filter);
         LocalBroadcastManager.getInstance(this).registerReceiver(restartService, filters);
         notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
     }
 
     @Override
@@ -316,7 +325,7 @@ public class VideoCompressActivity extends AppCompatActivity {
  }
 
 
-    public class UploadReceiver extends BroadcastReceiver {
+    public class CompressReceiver extends BroadcastReceiver {
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -349,10 +358,13 @@ public class VideoCompressActivity extends AppCompatActivity {
     }
 
 
+
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(uploadReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(compressReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(restartService);
+
     }
 }

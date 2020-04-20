@@ -1,5 +1,6 @@
 package com.sample.compressor;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -7,23 +8,39 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.filestack.Client;
+import com.filestack.Config;
+import com.filestack.FileLink;
+import com.filestack.Policy;
+import com.filestack.Progress;
+import com.filestack.android.internal.Util;
 import com.vincent.videocompressor.VideoCompress;
 
 import java.io.File;
+import java.io.IOException;
+import java.security.Security;
 import java.text.DecimalFormat;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+
+import io.reactivex.Flowable;
+import io.reactivex.SingleObserver;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Action;
+import io.reactivex.functions.Consumer;
 
 import static com.sample.compressor.VideoCompressActivity.CHANNEL_NAME;
 import static com.sample.compressor.VideoCompressActivity.NOTIFICATION_CHANNEL_ID;
@@ -38,6 +55,8 @@ public class UploadService extends Service {
     private static final DecimalFormat format = new DecimalFormat("#.##");
     private static final long MiB = 1024 * 1024;
     private static final long KiB = 1024;
+    Client client;
+
 
     @Override
     public void onCreate() {
@@ -49,6 +68,9 @@ public class UploadService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             createNotificationChannel();
         }
+
+
+
     }
 
 
@@ -130,25 +152,14 @@ public class UploadService extends Service {
            VideoCompress.compressVideoLow(Constant.Companion.getSourcePath(),Constant.Companion.getDestinationPath(), new VideoCompress.CompressListener() {
                     @Override
                     public void onStart() {
-                       /* tv_indicator.setText("Compressing..." + "\n"
-                                + "Start at: " + new SimpleDateFormat("HH:mm:ss", getLocale()).format(new Date()));
-                        pb_compress.setVisibility(View.VISIBLE);
-                        startTime = System.currentTimeMillis();*/
-                        //Util.writeFile(getApplicationContext(), "Start at: " + new SimpleDateFormat("HH:mm:ss", getLocale()).format(new Date()) + "\n");
+
                     }
 
                     @Override
                     public void onSuccess() {
-                       /* String previous = tv_indicator.getText().toString();
-                        tv_indicator.setText(previous + "\n"
-                                + "Compress Success!" + "\n"
-                                + "End at: " + new SimpleDateFormat("HH:mm:ss", getLocale()).format(new Date()));
-                        pb_compress.setVisibility(View.INVISIBLE);
-                        endTime = System.currentTimeMillis();*/
-                       /* Util.writeFile(getApplicationContext(), "End at: " + new SimpleDateFormat("HH:mm:ss", getLocale()).format(new Date()) + "\n");
-                        Util.writeFile(getApplicationContext(), "Total: " + ((endTime - startTime)/1000) + "s" + "\n");
-                        Util.writeFile(getApplicationContext());*/
-                       sendBroadcast();
+                        sendBroadcast();
+                        Log.d("compressor","compressor succeded");
+                       // Util.getClient().uploadAsync(Constant.Companion.getDestinationPath(),false);
 
                     }
 
@@ -170,8 +181,47 @@ public class UploadService extends Service {
                 });
     }
 
+
+    @SuppressLint("CheckResult")
+    private void uploadFiles(){
+        String apiKey = getString(R.string.filestack_api_key);
+        Config config = new Config(apiKey);
+        client = new Client(config);
+        // Set options and metadata for upload
+        /*StorageOptions options = new StorageOptions.Builder()
+                .mimeType("text/plain")
+                .filename("hello.txt")
+                .build();*/
+
+        // Perform an asynchronous, non-blocking upload
+        Flowable<Progress<FileLink>> upload = client.uploadAsync(Constant.Companion.getDestinationPath(), false);
+        upload.doOnNext(new Consumer<Progress<FileLink>>() {
+            @Override
+            public void accept(Progress<FileLink> progress) throws Exception {
+                System.out.printf("%f%% file uploaded\n", progress.getPercent());
+                if (progress.getData() != null) {
+                    FileLink file = progress.getData();
+                    Log.d("compressor","uploading done" + file.toString());
+                    //uploadBroadcast(file);
+                }
+            }
+        });
+
+    }
+
+
+ /*   private void uploadBroadcast(FileLink link){
+        Intent intent = new Intent(FsConstants.BROADCAST_UPLOAD);
+        if(link == null){
+            intent.putExtra(CompressorConstant.EXTRA_STATUS, CompressorConstant.STATUS_FAILED);
+        }else{
+            intent.putExtra(CompressorConstant.EXTRA_STATUS, CompressorConstant.STATUS_COMPLETE);
+        }
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }*/
+
     private void sendBroadcast() {
-        Intent intent = new Intent(CompressorConstant.BROADCAST_UPLOAD);
+        Intent intent = new Intent(CompressorConstant.BROADCAST_COMPRESS_UPLOAD);
         if (TextUtils.isEmpty(Constant.Companion.getDestinationPath())) {
             intent.putExtra(CompressorConstant.EXTRA_STATUS, CompressorConstant.STATUS_FAILED);
         } else {
@@ -220,4 +270,6 @@ public class UploadService extends Service {
         super.onDestroy();
         Log.d("compressor","service stopped called");
     }
+
+
 }
