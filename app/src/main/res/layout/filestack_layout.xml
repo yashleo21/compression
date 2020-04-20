@@ -6,7 +6,7 @@
     <Button android:id="@+id/sel_img_btn" style="@style/FormItem"
         android:layout_alignBottom="@id/img"
         android:text="Select"/>
-    
+
     <Button android:id="@+id/crt_act_btn" style="@style/FormItem"
         android:layout_alignParentBottom="true"
         android:text="Upload Video"/>
