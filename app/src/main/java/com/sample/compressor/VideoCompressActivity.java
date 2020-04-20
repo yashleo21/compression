@@ -48,7 +48,7 @@ public class VideoCompressActivity extends AppCompatActivity {
 
     public static final String NOTIFICATION_CHANNEL_ID = "compressorChannel";
     //User visible Channel Name
-    public static final String CHANNEL_NAME = "uploadChannel";
+    public static final String CHANNEL_NAME = "uploadsChannel";
     // Importance applicable to all the notifications in this Channel
     private static final int REQUEST_FOR_VIDEO_FILE = 1000;
     private TextView tv_input, tv_output, tv_indicator, tv_progress;

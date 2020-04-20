@@ -47,7 +47,7 @@ import okhttp3.internal.Internal;
  */
 public class UploadService extends Service {
 
-    private static final String NOTIFY_CHANNEL_UPLOAD = "uploadsChannel";
+    private static final String NOTIFY_CHANNEL_UPLOAD = "compressorChannel";
 
     private Executor executor = Executors.newSingleThreadExecutor();
 
