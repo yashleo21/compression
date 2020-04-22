@@ -8,13 +8,11 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.text.TextUtils;
 import android.util.Log;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -22,14 +20,10 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.filestack.Client;
 import com.filestack.Config;
 import com.filestack.FileLink;
-import com.filestack.Policy;
 import com.filestack.Progress;
-import com.filestack.android.internal.Util;
 import com.vincent.videocompressor.VideoCompress;
 
 import java.io.File;
-import java.io.IOException;
-import java.security.Security;
 import java.text.DecimalFormat;
 import java.util.Locale;
 import java.util.UUID;
@@ -37,10 +31,17 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import io.reactivex.Flowable;
-import io.reactivex.SingleObserver;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Action;
 import io.reactivex.functions.Consumer;
+
+import com.amazonaws.auth.CognitoCachingCredentialsProvider;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferListener;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferObserver;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferState;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferUtility;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
 
 import static com.sample.compressor.VideoCompressActivity.CHANNEL_NAME;
 import static com.sample.compressor.VideoCompressActivity.NOTIFICATION_CHANNEL_ID;
@@ -51,6 +52,7 @@ public class UploadService extends Service {
     private NotificationManager notificationManager;
     private int notificationId;
     private int errorNotificationId;
+    //CognitoCachingCredentialsProvider credentialsProvider;
 
     private static final DecimalFormat format = new DecimalFormat("#.##");
     private static final long MiB = 1024 * 1024;
@@ -65,6 +67,7 @@ public class UploadService extends Service {
         errorNotificationId = notificationId + 1;
 
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+       // initAmplifyS3();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             createNotificationChannel();
         }
@@ -100,7 +103,7 @@ public class UploadService extends Service {
                 // function for uploading
                 Log.d("compressor","compress called");
                 compressVideo();
-                stopSelf();
+               // stopSelf();
             }
         });
         return START_STICKY;
@@ -157,9 +160,17 @@ public class UploadService extends Service {
 
                     @Override
                     public void onSuccess() {
-                        sendBroadcast();
+                        //sendBroadcast();
+                        /*Config config = new Config( getString(R.string.filestack_api_key)); // the key used here is working well in IOS
+                        Client client = new Client(config);*/
                         Log.d("compressor","compressor succeded");
-                       // Util.getClient().uploadAsync(Constant.Companion.getDestinationPath(),false);
+                        try {
+                            uploadToS3();
+                           // client.uploadAsync(Constant.Companion.getDestinationPath(), true);
+                        } catch (Exception e) {
+                            Log.e("Test321", "Exception = " + e.getMessage());
+                            e.printStackTrace();
+                        }
 
                     }
 
@@ -209,6 +220,61 @@ public class UploadService extends Service {
 
     }
 
+    private void initAmplifyS3(){
+        /*credentialsProvider = new CognitoCachingCredentialsProvider(
+                getApplicationContext(),
+                "ap-south-1:df6a66ff-0658-4329-a1aa-22615d8cb5c5", // Identity pool ID
+                Regions.AP_SOUTH_1 // Region
+        );*/
+    }
+
+
+
+    private void uploadToS3(){
+        Log.d("compressor","upload started");
+        CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
+                getApplicationContext(),
+                "ap-south-1:df6a66ff-0658-4329-a1aa-22615d8cb5c5", // Identity pool ID
+                Regions.AP_SOUTH_1 // Region
+        );
+        AmazonS3 s3 = new AmazonS3Client(credentialsProvider);
+        TransferUtility transferUtility = TransferUtility.builder().s3Client(s3).context(getApplicationContext()).build();
+        //TransferUtility transferUtility = new TransferUtility(s3, getApplicationContext());
+        final TransferObserver observer = transferUtility.upload(
+                "test-media-upload",  //this is the bucket name on S3
+                "UPLOAD_MEDIA_DIRECTORY", //this is the path and name
+                new File(Constant.Companion.getDestinationPath()), //path to the file locally
+                CannedAccessControlList.PublicRead //to make the file public
+        );
+        observer.setTransferListener(new TransferListener() {
+            @Override
+            public void onStateChanged(int id, TransferState state) {
+                if (state.equals(TransferState.COMPLETED)) {
+                    //Success
+                    Log.d("compressor","s3 upload completed");
+                    Log.d("compressor","uploaded video id" + id);
+                    sendBroadcast(true);
+                } else if (state.equals(TransferState.FAILED)) {
+                    //Failed
+                    Log.d("compressor","s3 upload failed");
+                    sendBroadcast(false);
+                }
+
+            }
+
+            @Override
+            public void onProgressChanged(int id, long bytesCurrent, long bytesTotal) {
+                Log.d("compressor","uploaded  " + bytesCurrent/bytesTotal * 100);
+                sendProgressNotification((int)bytesCurrent,(int)bytesTotal,"uploading video");
+            }
+
+            @Override
+            public void onError(int id, Exception ex) {
+                Log.d("compressor","s3 upload failed");
+            }
+        });
+    }
+
 
  /*   private void uploadBroadcast(FileLink link){
         Intent intent = new Intent(FsConstants.BROADCAST_UPLOAD);
@@ -220,14 +286,19 @@ public class UploadService extends Service {
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }*/
 
-    private void sendBroadcast() {
+    private void sendBroadcast(boolean isUploadSuccess) {
         Intent intent = new Intent(CompressorConstant.BROADCAST_COMPRESS_UPLOAD);
         if (TextUtils.isEmpty(Constant.Companion.getDestinationPath())) {
             intent.putExtra(CompressorConstant.EXTRA_STATUS, CompressorConstant.STATUS_FAILED);
         } else {
             intent.putExtra(CompressorConstant.EXTRA_STATUS, CompressorConstant.STATUS_COMPLETE);
         }
-        sendNotification("Compress success","File compressed succesfully");
+        if(isUploadSuccess) {
+            sendNotification("upload ","File uploaded succesfully");
+        }else{
+            sendNotification("upload ","File upload failed");
+        }
+
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
 
     }
