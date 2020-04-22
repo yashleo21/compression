@@ -5,6 +5,7 @@ apply plugin: 'kotlin-android-extensions'
 android {
     compileSdkVersion 29
     buildToolsVersion "29.0.2"
+    useLibrary 'org.apache.http.legacy'
 
     defaultConfig {
         applicationId "com.sample.compressor"
@@ -49,4 +50,5 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.2.0'
     implementation "android.arch.work:work-runtime:1.0.1"
     implementation 'com.amazonaws:aws-android-sdk-s3:2.6.18'
+    implementation "commons-logging:commons-logging:1.2"
 }

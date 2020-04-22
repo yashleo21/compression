@@ -185,7 +185,7 @@ public class UploadService extends Service {
 
                     @Override
                     public void onProgress(float percent) {
-                      sendProgressNotification(100,Math.round(percent),"");
+                      //sendProgressNotification(100,Math.round(percent),"");
                       Log.d("compress","completed" + percent);
 
                     }
@@ -264,7 +264,7 @@ public class UploadService extends Service {
 
             @Override
             public void onProgressChanged(int id, long bytesCurrent, long bytesTotal) {
-                Log.d("compressor","uploaded  " + bytesCurrent/bytesTotal * 100);
+                Log.d("compressor","uploaded  " + (bytesCurrent/bytesTotal) * 100);
                 sendProgressNotification((int)bytesCurrent,(int)bytesTotal,"uploading video");
             }
 
