@@ -8,11 +8,14 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaFormat;
+import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -22,10 +25,14 @@ import com.filestack.Client;
 import com.filestack.Config;
 import com.filestack.FileLink;
 import com.filestack.Progress;
+import com.linkedin.android.litr.MediaTransformer;
+import com.linkedin.android.litr.TransformationListener;
+import com.linkedin.android.litr.analytics.TrackTransformationInfo;
 import com.vincent.videocompressor.VideoCompress;
 
 import java.io.File;
 import java.text.DecimalFormat;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.Executor;
@@ -44,11 +51,12 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.CannedAccessControlList;
 
+import static com.linkedin.android.litr.MediaTransformer.*;
 import static com.sample.compressor.VideoCompressActivity.CHANNEL_NAME;
 import static com.sample.compressor.VideoCompressActivity.NOTIFICATION_CHANNEL_ID;
 
 
-public class UploadService extends Service implements TransferListener{
+public class UploadService extends Service implements TransferListener,TransformationListener{
     private Executor executor = Executors.newSingleThreadExecutor();
     private NotificationManager notificationManager;
     private int notificationId;
@@ -103,6 +111,7 @@ public class UploadService extends Service implements TransferListener{
                 // function for uploading
                 Log.d("compressor","compress called");
                 compressVideo();
+                //compressVideoWithLitr(); // this is with litr
                 //uploadToS3();
                 stopSelf();
             }
@@ -191,6 +200,37 @@ public class UploadService extends Service implements TransferListener{
 
                     }
                 });
+    }
+
+
+    private void compressVideoWithLitr(){
+
+        MediaTransformer mediaTransformer = new MediaTransformer(getApplicationContext());
+        mediaTransformer.transform("video_upload",
+                Uri.parse(Constant.Companion.getSourcePath()),
+                Constant.Companion.getDestinationPath(),
+                        createMediaFormat(),
+                null, this,
+                GRANULARITY_DEFAULT,
+                null);
+    }
+
+
+
+    @Nullable
+    private MediaFormat createMediaFormat() {
+        MediaFormat mediaFormat = null;
+            mediaFormat = new MediaFormat();
+                mediaFormat.setString(MediaFormat.KEY_MIME, "video/avc");
+                mediaFormat.setInteger(MediaFormat.KEY_WIDTH, 1280);
+                mediaFormat.setInteger(MediaFormat.KEY_HEIGHT, 720);
+                mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 5);
+                mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
+                mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
+
+
+
+        return mediaFormat;
     }
 
 
@@ -386,5 +426,30 @@ public class UploadService extends Service implements TransferListener{
     @Override
     public void onError(int id, Exception ex) {
         Log.d("compressor","s3 upload failed");
+    }
+
+    @Override
+    public void onStarted(@NonNull String id) {
+     Log.d("litr","started");
+    }
+
+    @Override
+    public void onProgress(@NonNull String id, float progress) {
+        Log.d("litr",progress + "");
+    }
+
+    @Override
+    public void onCompleted(@NonNull String id, @Nullable List<TrackTransformationInfo> trackTransformationInfos) {
+        Log.d("litr","completed");
+    }
+
+    @Override
+    public void onCancelled(@NonNull String id, @Nullable List<TrackTransformationInfo> trackTransformationInfos) {
+        Log.d("litr","cancelled");
+    }
+
+    @Override
+    public void onError(@NonNull String id, @Nullable Throwable cause, @Nullable List<TrackTransformationInfo> trackTransformationInfos) {
+        Log.d("litr","errrorssss");
     }
 }
