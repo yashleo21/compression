@@ -4,10 +4,11 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
-import androidx.appcompat.app.AppCompatActivity
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import id.zelory.compressor.Compressor
 import id.zelory.compressor.constraint.destination
@@ -44,6 +45,7 @@ class ImageCompressActivity : AppCompatActivity() {
         chooseImageButton.setOnClickListener { chooseImage() }
         compressImageButton.setOnClickListener { compressImage() }
         customCompressImageButton.setOnClickListener { customCompressImage() }
+        customCompressImageButtonUpload.setOnClickListener { upload() }
     }
 
     private fun chooseImage() {
@@ -86,6 +88,7 @@ class ImageCompressActivity : AppCompatActivity() {
                     format(Bitmap.CompressFormat.JPEG)
                     destination(compressedImageFile)
                 }
+                Constant.destinationPath = compressedImage.toString()
                 setCompressedImage()
             }
         } ?: showError("Please choose an image!")
@@ -94,6 +97,7 @@ class ImageCompressActivity : AppCompatActivity() {
     private fun setCompressedImage() {
         compressedImage?.let {
             compressedImageView.setImageBitmap(BitmapFactory.decodeFile(it.absolutePath))
+
             compressedSizeTextView.text = String.format("Size : %s", getReadableFileSize(it.length()))
             Toast.makeText(this, "Compressed image save in " + it.path, Toast.LENGTH_LONG).show()
             Log.d("Compressor", "Compressed image save in " + it.path)
@@ -142,5 +146,16 @@ class ImageCompressActivity : AppCompatActivity() {
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
         val digitGroups = (log10(size.toDouble()) / log10(1024.0)).toInt()
         return DecimalFormat("#,##0.#").format(size / 1024.0.pow(digitGroups.toDouble())) + " " + units[digitGroups]
+    }
+
+    private fun upload(){
+        val uploadIntent =
+            Intent(this@ImageCompressActivity, UploadService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(uploadIntent)
+        } else {
+            startService(uploadIntent)
+        }
+
     }
 }

@@ -17,6 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.filestack.Client;
 import com.filestack.Config;
 import com.filestack.FileLink;
@@ -47,7 +48,7 @@ import static com.sample.compressor.VideoCompressActivity.CHANNEL_NAME;
 import static com.sample.compressor.VideoCompressActivity.NOTIFICATION_CHANNEL_ID;
 
 
-public class UploadService extends Service {
+public class UploadService extends Service implements TransferListener{
     private Executor executor = Executors.newSingleThreadExecutor();
     private NotificationManager notificationManager;
     private int notificationId;
@@ -67,7 +68,6 @@ public class UploadService extends Service {
         errorNotificationId = notificationId + 1;
 
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-       // initAmplifyS3();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             createNotificationChannel();
         }
@@ -103,7 +103,8 @@ public class UploadService extends Service {
                 // function for uploading
                 Log.d("compressor","compress called");
                 compressVideo();
-               // stopSelf();
+                //uploadToS3();
+                stopSelf();
             }
         });
         return START_STICKY;
@@ -185,7 +186,7 @@ public class UploadService extends Service {
 
                     @Override
                     public void onProgress(float percent) {
-                      //sendProgressNotification(100,Math.round(percent),"");
+                      sendProgressNotification(100,Math.round(percent),"");
                       Log.d("compress","completed" + percent);
 
                     }
@@ -220,51 +221,51 @@ public class UploadService extends Service {
 
     }
 
-    private void initAmplifyS3(){
-        /*credentialsProvider = new CognitoCachingCredentialsProvider(
-                getApplicationContext(),
-                "ap-south-1:df6a66ff-0658-4329-a1aa-22615d8cb5c5", // Identity pool ID
-                Regions.AP_SOUTH_1 // Region
-        );*/
-    }
 
 
 
     private void uploadToS3(){
         Log.d("compressor","upload started");
-        CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
-                getApplicationContext(),
-                "ap-south-1:df6a66ff-0658-4329-a1aa-22615d8cb5c5", // Identity pool ID
-                Regions.AP_SOUTH_1 // Region
-        );
-        AmazonS3 s3 = new AmazonS3Client(credentialsProvider);
-        TransferUtility transferUtility = TransferUtility.builder().s3Client(s3).context(getApplicationContext()).build();
-        //TransferUtility transferUtility = new TransferUtility(s3, getApplicationContext());
-        final TransferObserver observer = transferUtility.upload(
+        ObjectMetadata metadata = new ObjectMetadata();
+        //metadata.setContentType("video/mp4");
+        metadata.setContentType("image/jpeg");
+
+        final TransferObserver observer = getTransferUtility().upload(
                 "test-media-upload",  //this is the bucket name on S3
                 "UPLOAD_MEDIA_DIRECTORY", //this is the path and name
                 new File(Constant.Companion.getDestinationPath()), //path to the file locally
+                metadata, // metadata which stores content type and all
                 CannedAccessControlList.PublicRead //to make the file public
         );
-        observer.setTransferListener(new TransferListener() {
+        observer.setTransferListener(this);
+       /* observer.setTransferListener(new TransferListener() {
             @Override
             public void onStateChanged(int id, TransferState state) {
                 if (state.equals(TransferState.COMPLETED)) {
                     //Success
                     Log.d("compressor","s3 upload completed");
-                    Log.d("compressor","uploaded video id" + id);
+                    Log.d("compressor","uploaded video id " + id);
                     sendBroadcast(true);
                 } else if (state.equals(TransferState.FAILED)) {
                     //Failed
                     Log.d("compressor","s3 upload failed");
                     sendBroadcast(false);
+
+                    Log.d("compressor","retrying again");
+                    TransferObserver newTransferObserver = getTransferUtility().resume(id);
+                    newTransferObserver.setTransferListener(this);
+
+                }else if (state.equals(TransferState.WAITING_FOR_NETWORK)) {
+                    //Failed
+                    Log.d("compressor","waiting for network");
                 }
 
             }
 
             @Override
             public void onProgressChanged(int id, long bytesCurrent, long bytesTotal) {
-                Log.d("compressor","uploaded  " + (bytesCurrent/bytesTotal) * 100);
+                Log.d("compressor", String.format("onProgressChanged: %d, total: %d, current: %d",
+                        id, bytesTotal, bytesCurrent));
                 sendProgressNotification((int)bytesCurrent,(int)bytesTotal,"uploading video");
             }
 
@@ -272,7 +273,24 @@ public class UploadService extends Service {
             public void onError(int id, Exception ex) {
                 Log.d("compressor","s3 upload failed");
             }
-        });
+        });*/
+
+
+       /* //For pausing and resuming tasks:
+        // Gets id of the transfer.
+        int id = observer.getId();
+
+        // Pauses the transfer.
+        transferUtility.pause(id);
+
+        // Pause all the transfers.
+        transferUtility.pauseAllWithType(TransferType.ANY);
+
+        // Resumes the transfer.
+        transferUtility.resume(id);
+
+        // Resume all the transfers.
+        transferUtility.resumeAllWithType(TransferType.ANY);*/
     }
 
 
@@ -303,24 +321,6 @@ public class UploadService extends Service {
 
     }
 
-    public String getFileSize() {
-
-        File file = new File(Constant.Companion.getSourcePath());
-
-        if (!file.isFile()) {
-            throw new IllegalArgumentException("Expected a file");
-        }
-        final double length = file.length();
-
-        if (length > MiB) {
-            return format.format(length / MiB) + " MiB";
-        }
-        if (length > KiB) {
-            return format.format(length / KiB) + " KiB";
-        }
-        return format.format(length) + " B";
-    }
-
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         super.onTaskRemoved(rootIntent);
@@ -343,4 +343,48 @@ public class UploadService extends Service {
     }
 
 
+
+    private TransferUtility getTransferUtility(){
+        CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
+                getApplicationContext(),
+                "ap-south-1:df6a66ff-0658-4329-a1aa-22615d8cb5c5", // Identity pool ID
+                Regions.AP_SOUTH_1 // Region
+        );
+        AmazonS3 s3 = new AmazonS3Client(credentialsProvider);
+        return TransferUtility.builder().s3Client(s3).context(getApplicationContext()).build();
+    }
+
+    @Override
+    public void onStateChanged(int id, TransferState state) {
+        if (state.equals(TransferState.COMPLETED)) {
+            //Success
+            Log.d("compressor","s3 upload completed");
+            Log.d("compressor","uploaded video id " + id);
+            sendBroadcast(true);
+        } else if (state.equals(TransferState.FAILED)) {
+            //Failed
+            Log.d("compressor","s3 upload failed");
+            sendBroadcast(false);
+
+           /* Log.d("compressor","retrying again");
+            TransferObserver newTransferObserver = getTransferUtility().resume(id);
+            newTransferObserver.setTransferListener(this);*/
+
+        }else if (state.equals(TransferState.WAITING_FOR_NETWORK)) {
+            //Failed
+            Log.d("compressor","waiting for network");
+        }
+    }
+
+    @Override
+    public void onProgressChanged(int id, long bytesCurrent, long bytesTotal) {
+        Log.d("compressor", String.format("onProgressChanged: %d, total: %d, current: %d",
+                id, bytesTotal, bytesCurrent));
+        sendProgressNotification((int)bytesCurrent,(int)bytesTotal,"uploading video");
+    }
+
+    @Override
+    public void onError(int id, Exception ex) {
+        Log.d("compressor","s3 upload failed");
+    }
 }

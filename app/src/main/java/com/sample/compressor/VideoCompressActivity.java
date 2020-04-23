@@ -103,9 +103,9 @@ public class VideoCompressActivity extends AppCompatActivity {
                 if(Util.hasStoragePermission(STORAGE_REQ_CODE,VideoCompressActivity.this)){
                     Intent intent = new Intent();
                     /* 开启Pictures画面Type设定为image */
-                    //intent.setType("video/*;image/*");
+                     intent.setType("video/*;image/*");
                     //intent.setType("audio/*"); //选择音频
-                    intent.setType("video/*"); //选择视频 （mp4 3gp 是android支持的视频格式）
+                    //intent.setType("video/*"); //选择视频 （mp4 3gp 是android支持的视频格式）
                     intent.setAction(Intent.ACTION_GET_CONTENT);
                     startActivityForResult(intent, REQUEST_FOR_VIDEO_FILE);
                 }else {
@@ -267,9 +267,9 @@ public class VideoCompressActivity extends AppCompatActivity {
 
                      Intent intent = new Intent();
                      /* 开启Pictures画面Type设定为image */
-                     //intent.setType("video/*;image/*");
+                      intent.setType("video/*;image/*");
                      //intent.setType("audio/*"); //选择音频
-                     intent.setType("video/*"); //选择视频 （mp4 3gp 是android支持的视频格式）
+                     //intent.setType("video/*"); //选择视频 （mp4 3gp 是android支持的视频格式）
                      intent.setAction(Intent.ACTION_GET_CONTENT);
                      startActivityForResult(intent, REQUEST_FOR_VIDEO_FILE);
                  }
