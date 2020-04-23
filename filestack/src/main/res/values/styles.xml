@@ -1,0 +1,15 @@
+<resources>
+
+    <style name="FilestackNoActionBar" parent="Theme.AppCompat.Light.DarkActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="FilestackAppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+
+    <style name="FilestackPopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+    <style name="FilestackNavItem">
+        <item name="android:checkable">true</item>
+    </style>
+</resources>

@@ -3,4 +3,5 @@
 
     <string name="notify_channel_upload_name">Upload Progress</string>
     <string name="notify_channel_upload_description">Progress updates for uploads</string>
+    <string name="filestack_api_key">Ay1YpzVVwSX6yKHsR1TnDz</string>
 </resources>

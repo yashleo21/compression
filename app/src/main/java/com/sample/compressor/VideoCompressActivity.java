@@ -31,6 +31,10 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
+import com.filestack.Client;
+import com.filestack.Config;
+import com.filestack.FileLink;
+
 import com.karumi.dexter.Dexter;
 import com.karumi.dexter.listener.PermissionDeniedResponse;
 import com.karumi.dexter.listener.PermissionGrantedResponse;
@@ -48,7 +52,7 @@ public class VideoCompressActivity extends AppCompatActivity {
 
     public static final String NOTIFICATION_CHANNEL_ID = "compressorChannel";
     //User visible Channel Name
-    public static final String CHANNEL_NAME = "uploadChannel";
+    public static final String CHANNEL_NAME = "uploadsChannel";
     // Importance applicable to all the notifications in this Channel
     private static final int REQUEST_FOR_VIDEO_FILE = 1000;
     private TextView tv_input, tv_output, tv_indicator, tv_progress;
@@ -59,25 +63,30 @@ public class VideoCompressActivity extends AppCompatActivity {
     private String outputPath;
 
     private ProgressBar pb_compress;
-    private UploadReceiver uploadReceiver;
+    private CompressReceiver compressReceiver;
+
     private RestartReceiver restartService;
     NotificationManager notificationManager;
 
+
     private long startTime, endTime;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.video_layout);
 
-        IntentFilter filter = new IntentFilter(CompressorConstant.BROADCAST_UPLOAD);
+
+        IntentFilter filter = new IntentFilter(CompressorConstant.BROADCAST_COMPRESS_UPLOAD);
         IntentFilter filters = new IntentFilter(CompressorConstant.BROADCAST_STOPPED);
 
-        uploadReceiver = new UploadReceiver();
+        compressReceiver = new CompressReceiver();
         restartService = new RestartReceiver();
-        LocalBroadcastManager.getInstance(this).registerReceiver(uploadReceiver, filter);
+        LocalBroadcastManager.getInstance(this).registerReceiver(compressReceiver, filter);
         LocalBroadcastManager.getInstance(this).registerReceiver(restartService, filters);
         notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
     }
 
     @Override
@@ -94,9 +103,9 @@ public class VideoCompressActivity extends AppCompatActivity {
                 if(Util.hasStoragePermission(STORAGE_REQ_CODE,VideoCompressActivity.this)){
                     Intent intent = new Intent();
                     /* 开启Pictures画面Type设定为image */
-                    //intent.setType("video/*;image/*");
+                     intent.setType("video/*;image/*");
                     //intent.setType("audio/*"); //选择音频
-                    intent.setType("video/*"); //选择视频 （mp4 3gp 是android支持的视频格式）
+                    //intent.setType("video/*"); //选择视频 （mp4 3gp 是android支持的视频格式）
                     intent.setAction(Intent.ACTION_GET_CONTENT);
                     startActivityForResult(intent, REQUEST_FOR_VIDEO_FILE);
                 }else {
@@ -258,9 +267,9 @@ public class VideoCompressActivity extends AppCompatActivity {
 
                      Intent intent = new Intent();
                      /* 开启Pictures画面Type设定为image */
-                     //intent.setType("video/*;image/*");
+                      intent.setType("video/*;image/*");
                      //intent.setType("audio/*"); //选择音频
-                     intent.setType("video/*"); //选择视频 （mp4 3gp 是android支持的视频格式）
+                     //intent.setType("video/*"); //选择视频 （mp4 3gp 是android支持的视频格式）
                      intent.setAction(Intent.ACTION_GET_CONTENT);
                      startActivityForResult(intent, REQUEST_FOR_VIDEO_FILE);
                  }
@@ -316,7 +325,7 @@ public class VideoCompressActivity extends AppCompatActivity {
  }
 
 
-    public class UploadReceiver extends BroadcastReceiver {
+    public class CompressReceiver extends BroadcastReceiver {
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -349,10 +358,13 @@ public class VideoCompressActivity extends AppCompatActivity {
     }
 
 
+
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(uploadReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(compressReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(restartService);
+
     }
 }

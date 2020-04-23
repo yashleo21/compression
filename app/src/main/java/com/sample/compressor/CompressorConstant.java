@@ -11,7 +11,7 @@ public class CompressorConstant {
     public static final String STATUS_FAILED = "failed";
 
     /** Action for upload broadcast intent filter. */
-    public static final String BROADCAST_UPLOAD = "com.sample.compressor.android.BROADCAST_UPLOAD";
+    public static final String BROADCAST_COMPRESS_UPLOAD = "com.sample.compressor.android.BROADCAST_UPLOAD";
 
     /** Action for upload broadcast intent filter. */
     public static final String BROADCAST_STOPPED = "com.android.ServiceStopped";
