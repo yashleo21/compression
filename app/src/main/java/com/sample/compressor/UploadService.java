@@ -28,6 +28,8 @@ import com.filestack.Progress;
 import com.linkedin.android.litr.MediaTransformer;
 import com.linkedin.android.litr.TransformationListener;
 import com.linkedin.android.litr.analytics.TrackTransformationInfo;
+import com.otaliastudios.transcoder.Transcoder;
+import com.otaliastudios.transcoder.TranscoderListener;
 import com.vincent.videocompressor.VideoCompress;
 
 import java.io.File;
@@ -112,8 +114,9 @@ public class UploadService extends Service implements TransferListener,Transform
                 Log.d("compressor","compress called");
 
                 //compressVideo();
-                compressVideoWithLitr(); // this is with litr
-                //uploadToS3();
+                //compressVideoWithLitr(); // this is with litr
+                transcodeVideo();
+                //uploadToS3(); //for uploading to S3
                 //stopSelf();
             }
         });
@@ -415,5 +418,25 @@ public class UploadService extends Service implements TransferListener,Transform
     @Override
     public void onError(@NonNull String id, @Nullable Throwable cause, @Nullable List<TrackTransformationInfo> trackTransformationInfos) {
         Log.d("litr","errrorssss");
+    }
+
+
+    private void transcodeVideo(){
+        Transcoder.into(Constant.Companion.getDestinationPath())
+                .addDataSource(Constant.Companion.getSourcePath())
+                .setListener(new TranscoderListener() {
+                    public void onTranscodeProgress(double progress) {
+                        Log.d("transcode","transcode progress - " + progress + "");
+                    }
+                    public void onTranscodeCompleted(int successCode) {
+                        Log.d("transcode","transcode completed");
+                    }
+                    public void onTranscodeCanceled() {
+                        Log.d("transcode","transcode cancelled");
+                    }
+                    public void onTranscodeFailed(@NonNull Throwable exception) {
+                        Log.d("transcode","transcode failed");
+                    }
+                }).transcode();
     }
 }

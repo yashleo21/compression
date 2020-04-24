@@ -51,6 +51,7 @@ dependencies {
     implementation "android.arch.work:work-runtime:1.0.1"
     implementation 'com.amazonaws:aws-android-sdk-s3:2.6.18'
     implementation "commons-logging:commons-logging:1.2"
+    implementation 'com.otaliastudios:transcoder:0.9.0'
 
     implementation 'com.linkedin.android.litr:litr:1.2.5'
 }
