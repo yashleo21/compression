@@ -52,5 +52,5 @@ dependencies {
     implementation 'com.amazonaws:aws-android-sdk-s3:2.6.18'
     implementation "commons-logging:commons-logging:1.2"
 
-    implementation 'com.linkedin.android.litr:litr:1.1.0'
+    implementation 'com.linkedin.android.litr:litr:1.2.5'
 }

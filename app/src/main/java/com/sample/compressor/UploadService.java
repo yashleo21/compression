@@ -110,6 +110,7 @@ public class UploadService extends Service implements TransferListener,Transform
             public void run() {
                 // function for uploading
                 Log.d("compressor","compress called");
+
                 //compressVideo();
                 compressVideoWithLitr(); // this is with litr
                 //uploadToS3();
@@ -213,7 +214,15 @@ public class UploadService extends Service implements TransferListener,Transform
                 null, this,
                 GRANULARITY_DEFAULT,
                 null);
+
+       /* MediaFormat sourceMediaFormat = MediaFormat.createVideoFormat("video/mp4", 1920, 1080);
+        sourceMediaFormat.setInteger();
+        mediaTransformer.transform(UUID.randomUUID().toString(),
+                Uri.parse(Constant.Companion.getSourcePath()),
+                Constant.Companion.getDestinationPath(),
+                );*/
     }
+
 
 
     @Nullable
@@ -297,7 +306,7 @@ public class UploadService extends Service implements TransferListener,Transform
         // Resume all the transfers.
         transferUtility.resumeAllWithType(TransferType.ANY);*/
     }
-    
+
 
     private void sendBroadcast(boolean isUploadSuccess) {
         Intent intent = new Intent(CompressorConstant.BROADCAST_COMPRESS_UPLOAD);
