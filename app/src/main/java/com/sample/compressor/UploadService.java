@@ -110,10 +110,10 @@ public class UploadService extends Service implements TransferListener,Transform
             public void run() {
                 // function for uploading
                 Log.d("compressor","compress called");
-                compressVideo();
-                //compressVideoWithLitr(); // this is with litr
+                //compressVideo();
+                compressVideoWithLitr(); // this is with litr
                 //uploadToS3();
-                stopSelf();
+                //stopSelf();
             }
         });
         return START_STICKY;
@@ -209,59 +209,24 @@ public class UploadService extends Service implements TransferListener,Transform
         mediaTransformer.transform("video_upload",
                 Uri.parse(Constant.Companion.getSourcePath()),
                 Constant.Companion.getDestinationPath(),
-                        createMediaFormat(),
+                createMediaFormat(),
                 null, this,
                 GRANULARITY_DEFAULT,
                 null);
     }
 
 
-
     @Nullable
     private MediaFormat createMediaFormat() {
-        MediaFormat mediaFormat = null;
-            mediaFormat = new MediaFormat();
-                mediaFormat.setString(MediaFormat.KEY_MIME, "video/avc");
-                mediaFormat.setInteger(MediaFormat.KEY_WIDTH, 1280);
-                mediaFormat.setInteger(MediaFormat.KEY_HEIGHT, 720);
-                mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 5);
-                mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
-                mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
-
-
-
+        MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/mp4", 1280, 720);
+        mediaFormat.setString(MediaFormat.KEY_MIME, "video/avc");
+        mediaFormat.setInteger(MediaFormat.KEY_WIDTH, 1280);
+        mediaFormat.setInteger(MediaFormat.KEY_HEIGHT, 720);
+        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 5);
+        mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
+        mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
         return mediaFormat;
     }
-
-
-    @SuppressLint("CheckResult")
-    private void uploadFiles(){
-        String apiKey = getString(R.string.filestack_api_key);
-        Config config = new Config(apiKey);
-        client = new Client(config);
-        // Set options and metadata for upload
-        /*StorageOptions options = new StorageOptions.Builder()
-                .mimeType("text/plain")
-                .filename("hello.txt")
-                .build();*/
-
-        // Perform an asynchronous, non-blocking upload
-        Flowable<Progress<FileLink>> upload = client.uploadAsync(Constant.Companion.getDestinationPath(), false);
-        upload.doOnNext(new Consumer<Progress<FileLink>>() {
-            @Override
-            public void accept(Progress<FileLink> progress) throws Exception {
-                System.out.printf("%f%% file uploaded\n", progress.getPercent());
-                if (progress.getData() != null) {
-                    FileLink file = progress.getData();
-                    Log.d("compressor","uploading done" + file.toString());
-                    //uploadBroadcast(file);
-                }
-            }
-        });
-
-    }
-
-
 
 
     private void uploadToS3(){
@@ -332,17 +297,7 @@ public class UploadService extends Service implements TransferListener,Transform
         // Resume all the transfers.
         transferUtility.resumeAllWithType(TransferType.ANY);*/
     }
-
-
- /*   private void uploadBroadcast(FileLink link){
-        Intent intent = new Intent(FsConstants.BROADCAST_UPLOAD);
-        if(link == null){
-            intent.putExtra(CompressorConstant.EXTRA_STATUS, CompressorConstant.STATUS_FAILED);
-        }else{
-            intent.putExtra(CompressorConstant.EXTRA_STATUS, CompressorConstant.STATUS_COMPLETE);
-        }
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
-    }*/
+    
 
     private void sendBroadcast(boolean isUploadSuccess) {
         Intent intent = new Intent(CompressorConstant.BROADCAST_COMPRESS_UPLOAD);
