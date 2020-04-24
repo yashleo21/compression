@@ -30,15 +30,20 @@ import com.linkedin.android.litr.TransformationListener;
 import com.linkedin.android.litr.analytics.TrackTransformationInfo;
 import com.otaliastudios.transcoder.Transcoder;
 import com.otaliastudios.transcoder.TranscoderListener;
+import com.otaliastudios.transcoder.strategy.DefaultVideoStrategies;
+import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy;
+import com.otaliastudios.transcoder.strategy.PassThroughTrackStrategy;
 import com.vincent.videocompressor.VideoCompress;
 
 import java.io.File;
 import java.text.DecimalFormat;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Flowable;
 import io.reactivex.functions.Consumer;
@@ -68,6 +73,7 @@ public class UploadService extends Service implements TransferListener,Transform
     private static final DecimalFormat format = new DecimalFormat("#.##");
     private static final long MiB = 1024 * 1024;
     private static final long KiB = 1024;
+    long startTime;
     Client client;
 
 
@@ -132,7 +138,7 @@ public class UploadService extends Service implements TransferListener,Transform
         NotificationCompat.Builder builder;
         if (total == done) {
             builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
-            builder.setContentTitle(String.format(Locale.getDefault(), "Uploaded %d files", done));
+            builder.setContentTitle(String.format(Locale.getDefault(), "transcoding %d files", done));
             builder.setSmallIcon(R.drawable.ic_launcher_background);
             builder.setPriority(NotificationCompat.PRIORITY_HIGH);
         } else {
@@ -422,14 +428,28 @@ public class UploadService extends Service implements TransferListener,Transform
 
 
     private void transcodeVideo(){
+        DefaultVideoStrategy strategy = new DefaultVideoStrategy.Builder()
+                //.bitRate(bitRate)
+                .bitRate(DefaultVideoStrategy.BITRATE_UNKNOWN) // tries to estimate
+                .frameRate(30) // will be capped to the input frameRate
+                .keyFrameInterval(5) // interval between key-frames in seconds
+                .build();
+        startTime = System.currentTimeMillis();
         Transcoder.into(Constant.Companion.getDestinationPath())
                 .addDataSource(Constant.Companion.getSourcePath())
+                .setVideoTrackStrategy(DefaultVideoStrategies.for720x1280())
+                .setAudioTrackStrategy(new PassThroughTrackStrategy())
                 .setListener(new TranscoderListener() {
                     public void onTranscodeProgress(double progress) {
                         Log.d("transcode","transcode progress - " + progress + "");
+
                     }
                     public void onTranscodeCompleted(int successCode) {
                         Log.d("transcode","transcode completed");
+                        long endTime = System.currentTimeMillis();
+                        long timediff = endTime-startTime;
+                        long seconds = TimeUnit.MILLISECONDS.toSeconds(timediff);
+                        sendNotification("trancode","transcode complted in "+ seconds +"secs");
                     }
                     public void onTranscodeCanceled() {
                         Log.d("transcode","transcode cancelled");
