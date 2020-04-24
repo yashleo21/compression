@@ -28,15 +28,22 @@ import com.filestack.Progress;
 import com.linkedin.android.litr.MediaTransformer;
 import com.linkedin.android.litr.TransformationListener;
 import com.linkedin.android.litr.analytics.TrackTransformationInfo;
+import com.otaliastudios.transcoder.Transcoder;
+import com.otaliastudios.transcoder.TranscoderListener;
+import com.otaliastudios.transcoder.strategy.DefaultVideoStrategies;
+import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy;
+import com.otaliastudios.transcoder.strategy.PassThroughTrackStrategy;
 import com.vincent.videocompressor.VideoCompress;
 
 import java.io.File;
 import java.text.DecimalFormat;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Flowable;
 import io.reactivex.functions.Consumer;
@@ -66,6 +73,7 @@ public class UploadService extends Service implements TransferListener,Transform
     private static final DecimalFormat format = new DecimalFormat("#.##");
     private static final long MiB = 1024 * 1024;
     private static final long KiB = 1024;
+    long startTime;
     Client client;
 
 
@@ -110,11 +118,12 @@ public class UploadService extends Service implements TransferListener,Transform
             public void run() {
                 // function for uploading
                 Log.d("compressor","compress called");
-                compressVideoWithLitr();
+
                 //compressVideo();
                 //compressVideoWithLitr(); // this is with litr
-                //uploadToS3();
-                stopSelf();
+                transcodeVideo();
+                //uploadToS3(); //for uploading to S3
+                //stopSelf();
             }
         });
         return START_STICKY;
@@ -129,7 +138,7 @@ public class UploadService extends Service implements TransferListener,Transform
         NotificationCompat.Builder builder;
         if (total == done) {
             builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
-            builder.setContentTitle(String.format(Locale.getDefault(), "Uploaded %d files", done));
+            builder.setContentTitle(String.format(Locale.getDefault(), "transcoding %d files", done));
             builder.setSmallIcon(R.drawable.ic_launcher_background);
             builder.setPriority(NotificationCompat.PRIORITY_HIGH);
         } else {
@@ -210,7 +219,7 @@ public class UploadService extends Service implements TransferListener,Transform
         mediaTransformer.transform("video_upload",
                 Uri.parse(Constant.Companion.getSourcePath()),
                 Constant.Companion.getDestinationPath(),
-                        createMediaFormat(),
+                createMediaFormat(),
                 null, this,
                 GRANULARITY_DEFAULT,
                 null);
@@ -227,49 +236,15 @@ public class UploadService extends Service implements TransferListener,Transform
 
     @Nullable
     private MediaFormat createMediaFormat() {
-        MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/avc", 1280, 720);
-
-                mediaFormat.setString(MediaFormat.KEY_MIME, "video/avc");
-                mediaFormat.setInteger(MediaFormat.KEY_WIDTH, 1280);
-                mediaFormat.setInteger(MediaFormat.KEY_HEIGHT, 720);
-                mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 5);
-                mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
-                mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
-
-
-
+        MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/mp4", 1280, 720);
+        mediaFormat.setString(MediaFormat.KEY_MIME, "video/avc");
+        mediaFormat.setInteger(MediaFormat.KEY_WIDTH, 1280);
+        mediaFormat.setInteger(MediaFormat.KEY_HEIGHT, 720);
+        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 5);
+        mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
+        mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
         return mediaFormat;
     }
-
-
-    @SuppressLint("CheckResult")
-    private void uploadFiles(){
-        String apiKey = getString(R.string.filestack_api_key);
-        Config config = new Config(apiKey);
-        client = new Client(config);
-        // Set options and metadata for upload
-        /*StorageOptions options = new StorageOptions.Builder()
-                .mimeType("text/plain")
-                .filename("hello.txt")
-                .build();*/
-
-        // Perform an asynchronous, non-blocking upload
-        Flowable<Progress<FileLink>> upload = client.uploadAsync(Constant.Companion.getDestinationPath(), false);
-        upload.doOnNext(new Consumer<Progress<FileLink>>() {
-            @Override
-            public void accept(Progress<FileLink> progress) throws Exception {
-                System.out.printf("%f%% file uploaded\n", progress.getPercent());
-                if (progress.getData() != null) {
-                    FileLink file = progress.getData();
-                    Log.d("compressor","uploading done" + file.toString());
-                    //uploadBroadcast(file);
-                }
-            }
-        });
-
-    }
-
-
 
 
     private void uploadToS3(){
@@ -341,16 +316,6 @@ public class UploadService extends Service implements TransferListener,Transform
         transferUtility.resumeAllWithType(TransferType.ANY);*/
     }
 
-
- /*   private void uploadBroadcast(FileLink link){
-        Intent intent = new Intent(FsConstants.BROADCAST_UPLOAD);
-        if(link == null){
-            intent.putExtra(CompressorConstant.EXTRA_STATUS, CompressorConstant.STATUS_FAILED);
-        }else{
-            intent.putExtra(CompressorConstant.EXTRA_STATUS, CompressorConstant.STATUS_COMPLETE);
-        }
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
-    }*/
 
     private void sendBroadcast(boolean isUploadSuccess) {
         Intent intent = new Intent(CompressorConstant.BROADCAST_COMPRESS_UPLOAD);
@@ -459,5 +424,39 @@ public class UploadService extends Service implements TransferListener,Transform
     @Override
     public void onError(@NonNull String id, @Nullable Throwable cause, @Nullable List<TrackTransformationInfo> trackTransformationInfos) {
         Log.d("litr","errrorssss");
+    }
+
+
+    private void transcodeVideo(){
+        DefaultVideoStrategy strategy = new DefaultVideoStrategy.Builder()
+                //.bitRate(bitRate)
+                .bitRate(DefaultVideoStrategy.BITRATE_UNKNOWN) // tries to estimate
+                .frameRate(30) // will be capped to the input frameRate
+                .keyFrameInterval(5) // interval between key-frames in seconds
+                .build();
+        startTime = System.currentTimeMillis();
+        Transcoder.into(Constant.Companion.getDestinationPath())
+                .addDataSource(Constant.Companion.getSourcePath())
+                .setVideoTrackStrategy(DefaultVideoStrategies.for720x1280())
+                .setAudioTrackStrategy(new PassThroughTrackStrategy())
+                .setListener(new TranscoderListener() {
+                    public void onTranscodeProgress(double progress) {
+                        Log.d("transcode","transcode progress - " + progress + "");
+
+                    }
+                    public void onTranscodeCompleted(int successCode) {
+                        Log.d("transcode","transcode completed");
+                        long endTime = System.currentTimeMillis();
+                        long timediff = endTime-startTime;
+                        long seconds = TimeUnit.MILLISECONDS.toSeconds(timediff);
+                        sendNotification("trancode","transcode complted in "+ seconds +"secs");
+                    }
+                    public void onTranscodeCanceled() {
+                        Log.d("transcode","transcode cancelled");
+                    }
+                    public void onTranscodeFailed(@NonNull Throwable exception) {
+                        Log.d("transcode","transcode failed");
+                    }
+                }).transcode();
     }
 }
