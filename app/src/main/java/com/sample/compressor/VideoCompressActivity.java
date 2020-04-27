@@ -46,6 +46,8 @@ import com.karumi.dexter.listener.single.BasePermissionListener;
 import org.w3c.dom.Text;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -184,13 +186,17 @@ public class VideoCompressActivity extends AppCompatActivity {
                     tv_input.setText(inputPath);
                     //Set Media meta data info here
                     final MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
-                    mediaMetadataRetriever.setDataSource(inputPath);
+                    File file = new File(inputPath);
+                    FileInputStream fileInputStream = new FileInputStream(inputPath);
+                    mediaMetadataRetriever.setDataSource(fileInputStream.getFD());
                     Log.d(TAG, "media meta data received: " + mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE));
 
                     extractMediaFrames(mediaMetadataRetriever);
 
 
                 } catch (URISyntaxException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
 
@@ -208,8 +214,8 @@ public class VideoCompressActivity extends AppCompatActivity {
 
         mediaInfo.setText(result);
 
-        pbTimeline.setVisibility(View.VISIBLE);
-        timelineView.setVisibility(View.GONE);
+        /*pbTimeline.setVisibility(View.VISIBLE);
+        timelineView.setVisibility(View.GONE);*/
 
         //Set an executor for background thread op
         Executor executor = Executors.newSingleThreadExecutor();
@@ -219,24 +225,28 @@ public class VideoCompressActivity extends AppCompatActivity {
                 //Prepare data source
                 long duration = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
                 long currentDuration = 0L;
-
-                final ArrayList<Bitmap> frames = new ArrayList<>();
-                while (currentDuration <= duration) {
-                    //Will update every 5s
-                    frames.add(mediaMetadataRetriever.getFrameAtTime(currentDuration * 1000));
-                    currentDuration += 1000;
-                }
-                mediaMetadataRetriever.close();
-
                 VideoCompressActivity.this.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        pbTimeline.setVisibility(View.GONE);
-                        timelineView.setVisibility(View.VISIBLE);
-                        timelineAdapter.updateList(frames);
-                        Log.d(TAG, "Bitmap list size: " + frames.size());
+                        timelineAdapter.clearCurrentList();
                     }
                 });
+                final ArrayList<Bitmap> frames = new ArrayList<>();
+                while (currentDuration <= duration) {
+                    //Will update every 5s
+                    frames.add(mediaMetadataRetriever.getFrameAtTime(currentDuration * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC));
+                    VideoCompressActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            /*pbTimeline.setVisibility(View.GONE);
+                            timelineView.setVisibility(View.VISIBLE);*/
+                            timelineAdapter.updateList(frames);
+                            Log.d(TAG, "Bitmap list size: " + frames.size());
+                        }
+                    });
+                    currentDuration += 1000;
+                }
+                mediaMetadataRetriever.close();
 
             }
         });

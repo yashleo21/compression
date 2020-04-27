@@ -35,6 +35,11 @@ class TimelineAdapter(context: Context) : RecyclerView.Adapter<RecyclerView.View
     fun updateList(data: ArrayList<Bitmap>) {
         bitmapList.clear()
         bitmapList.addAll(data)
+        notifyItemInserted(data.size - 1)
+    }
+
+    fun clearCurrentList() {
+        bitmapList.clear()
         notifyDataSetChanged()
     }
 }
