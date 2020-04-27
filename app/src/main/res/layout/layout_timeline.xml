@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="#fff">
+
+    <RelativeLayout
+        android:id="@+id/rl_player_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.exoplayer2.ui.PlayerView
+            android:id="@+id/pv_video"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:use_controller="false" />
+
+        <ImageView
+            android:id="@+id/iv_play"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="#452023"
+            android:layout_centerInParent="true"/>
+    </RelativeLayout>
+
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true">
+
+        <com.appyvet.materialrangebar.RangeBar
+            android:id="@+id/rangebar"
+            android:layout_gravity="top"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:mrb_thumbSize="10dp"/>
+        <ProgressBar
+            android:id="@+id/pb_timeline"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:visibility="gone"
+            android:layout_gravity="center"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_timeline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"/>
+
+    </FrameLayout>
+
+</RelativeLayout>
