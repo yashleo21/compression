@@ -13,6 +13,7 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.media.MediaMetadataRetriever;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -20,6 +21,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -34,10 +36,18 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
+import com.appyvet.materialrangebar.RangeBar;
 import com.filestack.Client;
 import com.filestack.Config;
 import com.filestack.FileLink;
 
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.SeekParameters;
+import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.source.ProgressiveMediaSource;
+import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.karumi.dexter.Dexter;
 import com.karumi.dexter.listener.PermissionDeniedResponse;
 import com.karumi.dexter.listener.PermissionGrantedResponse;
@@ -54,7 +64,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 
 public class VideoCompressActivity extends AppCompatActivity {
@@ -84,6 +96,17 @@ public class VideoCompressActivity extends AppCompatActivity {
     private TimelineAdapter timelineAdapter;
     //
     private ProgressBar pbTimeline;
+
+    private Runnable myRunnable;
+    //
+    private Future longRunningTaskFuture;
+    //
+    private PlayerView playerView;
+    private ExoPlayer exoPlayer;
+    private ProgressiveMediaSource dataSource;
+    //
+    private RangeBar rangeBar;
+    private ImageView iv_play;
 
 
     private long startTime, endTime;
@@ -167,10 +190,52 @@ public class VideoCompressActivity extends AppCompatActivity {
         mediaInfo = (TextView) findViewById(R.id.tv_mediaInfo);
         timelineView = findViewById(R.id.rv_timeline);
         pbTimeline = findViewById(R.id.pb_timeline);
+        playerView = findViewById(R.id.pv_video);
 
         timelineAdapter = new TimelineAdapter(this);
         timelineView.setAdapter(timelineAdapter);
+        //
+        rangeBar = findViewById(R.id.rangebar);
+        //
+        iv_play = findViewById(R.id.iv_play);
+        exoPlayer = new SimpleExoPlayer.Builder(this).build();
+        exoPlayer.setSeekParameters(SeekParameters.CLOSEST_SYNC);
+        playerView.setPlayer(exoPlayer);
 
+
+        //
+        rangeBar.setOnRangeBarChangeListener(new RangeBar.OnRangeBarChangeListener() {
+            @Override
+            public void onRangeChangeListener(RangeBar rangeBar, int leftPinIndex,
+                                              int rightPinIndex, String leftPinValue,
+                                              String rightPinValue) {
+                Log.d(TAG, "Rangebar changed: leftPinIndex "
+                        + leftPinIndex + " rightPinIndex" + rightPinIndex + " leftPinValue"
+                        + leftPinValue + " rightPinValue "+ rightPinValue);
+                if (exoPlayer != null) {
+                    exoPlayer.seekTo(leftPinIndex);
+                }
+            }
+
+            @Override
+            public void onTouchStarted(RangeBar rangeBar) {
+
+            }
+
+            @Override
+            public void onTouchEnded(RangeBar rangeBar) {
+
+            }
+        });
+
+        iv_play.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (exoPlayer != null && dataSource != null) {
+                    exoPlayer.setPlayWhenReady(!exoPlayer.getPlayWhenReady());
+                }
+            }
+        });
     }
 
     @Override
@@ -184,14 +249,25 @@ public class VideoCompressActivity extends AppCompatActivity {
                 try {
                     inputPath = Util.getFilePath(this, data.getData());
                     tv_input.setText(inputPath);
+
+                    /*Intent intent = new Intent(this, TimelineActivity.class);
+                    intent.putExtra("videoPath", inputPath);
+                    startActivity(intent);*/
                     //Set Media meta data info here
                     final MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
                     File file = new File(inputPath);
                     FileInputStream fileInputStream = new FileInputStream(inputPath);
                     mediaMetadataRetriever.setDataSource(fileInputStream.getFD());
                     Log.d(TAG, "media meta data received: " + mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE));
-
+                    //
+                    timelineAdapter.clearCurrentList();
                     extractMediaFrames(mediaMetadataRetriever);
+                    //
+                    DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(VideoCompressActivity.this, "agent");
+                    dataSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(inputPath));
+                    exoPlayer.prepare(dataSource);
+                    exoPlayer.seekTo(0);
+                    exoPlayer.setPlayWhenReady(false);
 
 
                 } catch (URISyntaxException e) {
@@ -206,6 +282,22 @@ public class VideoCompressActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (exoPlayer != null) {
+            exoPlayer.setPlayWhenReady(false);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        /*if (exoPlayer != null) {
+            exoPlayer.setPlayWhenReady(true);
+        }*/
+    }
+
     private void extractMediaFrames(final MediaMetadataRetriever mediaMetadataRetriever) {
         String result = "";
         result += "MimeType: " + mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE) + "\n";
@@ -213,24 +305,23 @@ public class VideoCompressActivity extends AppCompatActivity {
         result += "Bitrate: " + mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE) + "bits/s\n";
 
         mediaInfo.setText(result);
+        long duration = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+        //
+        rangeBar.setTickStart(0f);
+        rangeBar.setTickEnd(duration);
+        rangeBar.setTickInterval(1f);
 
         /*pbTimeline.setVisibility(View.VISIBLE);
         timelineView.setVisibility(View.GONE);*/
 
         //Set an executor for background thread op
-        Executor executor = Executors.newSingleThreadExecutor();
-        executor.execute(new Runnable() {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        myRunnable = new Runnable() {
             @Override
             public void run() {
-                //Prepare data source
+//Prepare data source
                 long duration = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
                 long currentDuration = 0L;
-                VideoCompressActivity.this.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        timelineAdapter.clearCurrentList();
-                    }
-                });
                 final ArrayList<Bitmap> frames = new ArrayList<>();
                 while (currentDuration <= duration) {
                     //Will update every 5s
@@ -247,9 +338,10 @@ public class VideoCompressActivity extends AppCompatActivity {
                     currentDuration += 1000;
                 }
                 mediaMetadataRetriever.close();
-
             }
-        });
+        };
+
+        longRunningTaskFuture = executor.submit(myRunnable);
 
     }
 

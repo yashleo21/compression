@@ -2,10 +2,12 @@ package com.sample.compressor
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 
 class TimelineAdapter(context: Context) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -32,14 +34,38 @@ class TimelineAdapter(context: Context) : RecyclerView.Adapter<RecyclerView.View
         }
     }
 
+    class TimelineDiffUtil(val oldList: ArrayList<Bitmap>, val newList: ArrayList<Bitmap>): DiffUtil.Callback() {
+        override fun getOldListSize(): Int {
+            return oldList.size
+        }
+
+        override fun getNewListSize(): Int {
+            return newList.size
+        }
+
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition] == newList[newItemPosition]
+        }
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition] == newList[newItemPosition]
+        }
+    }
+
     fun updateList(data: ArrayList<Bitmap>) {
+        /*bitmapList.clear()
+        bitmapList.addAll(data)
+        notifyDataSetChanged()*/
+        val diffResult = DiffUtil.calculateDiff(TimelineDiffUtil(bitmapList, data))
+        diffResult.dispatchUpdatesTo(this)
         bitmapList.clear()
         bitmapList.addAll(data)
-        notifyItemInserted(data.size - 1)
+        //notifyItemInserted(data.size - 1)
     }
 
     fun clearCurrentList() {
         bitmapList.clear()
+        Log.d("TimelineAdapter", "List cleared")
         notifyDataSetChanged()
     }
 }
