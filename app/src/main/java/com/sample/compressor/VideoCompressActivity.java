@@ -10,7 +10,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.media.MediaMetadataRetriever;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -27,6 +29,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
 import androidx.lifecycle.Observer;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
@@ -40,16 +43,21 @@ import com.karumi.dexter.listener.PermissionDeniedResponse;
 import com.karumi.dexter.listener.PermissionGrantedResponse;
 import com.karumi.dexter.listener.single.BasePermissionListener;
 
+import org.w3c.dom.Text;
+
 import java.io.File;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
-
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 
 public class VideoCompressActivity extends AppCompatActivity {
 
+    public static final String TAG = VideoCompressActivity.class.getSimpleName();
     public static final String NOTIFICATION_CHANNEL_ID = "compressorChannel";
     //User visible Channel Name
     public static final String CHANNEL_NAME = "uploadsChannel";
@@ -64,9 +72,16 @@ public class VideoCompressActivity extends AppCompatActivity {
 
     private ProgressBar pb_compress;
     private CompressReceiver compressReceiver;
+    //
+    private TextView mediaInfo;
+    private RecyclerView timelineView;
 
     private RestartReceiver restartService;
     NotificationManager notificationManager;
+    //
+    private TimelineAdapter timelineAdapter;
+    //
+    private ProgressBar pbTimeline;
 
 
     private long startTime, endTime;
@@ -146,6 +161,14 @@ public class VideoCompressActivity extends AppCompatActivity {
         tv_progress = (TextView) findViewById(R.id.tv_progress);
 
         pb_compress = (ProgressBar) findViewById(R.id.pb_compress);
+
+        mediaInfo = (TextView) findViewById(R.id.tv_mediaInfo);
+        timelineView = findViewById(R.id.rv_timeline);
+        pbTimeline = findViewById(R.id.pb_timeline);
+
+        timelineAdapter = new TimelineAdapter(this);
+        timelineView.setAdapter(timelineAdapter);
+
     }
 
     @Override
@@ -159,6 +182,14 @@ public class VideoCompressActivity extends AppCompatActivity {
                 try {
                     inputPath = Util.getFilePath(this, data.getData());
                     tv_input.setText(inputPath);
+                    //Set Media meta data info here
+                    final MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
+                    mediaMetadataRetriever.setDataSource(inputPath);
+                    Log.d(TAG, "media meta data received: " + mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE));
+
+                    extractMediaFrames(mediaMetadataRetriever);
+
+
                 } catch (URISyntaxException e) {
                     e.printStackTrace();
                 }
@@ -167,6 +198,49 @@ public class VideoCompressActivity extends AppCompatActivity {
 //                tv_input.setText(inputPath);// /storage/emulated/0/DCIM/Camera/VID_20170522_172417.mp4
             }
         }
+    }
+
+    private void extractMediaFrames(final MediaMetadataRetriever mediaMetadataRetriever) {
+        String result = "";
+        result += "MimeType: " + mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE) + "\n";
+        result += "Duration: " + mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION) + "ms\n";
+        result += "Bitrate: " + mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE) + "bits/s\n";
+
+        mediaInfo.setText(result);
+
+        pbTimeline.setVisibility(View.VISIBLE);
+        timelineView.setVisibility(View.GONE);
+
+        //Set an executor for background thread op
+        Executor executor = Executors.newSingleThreadExecutor();
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                //Prepare data source
+                long duration = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+                long currentDuration = 0L;
+
+                final ArrayList<Bitmap> frames = new ArrayList<>();
+                while (currentDuration <= duration) {
+                    //Will update every 5s
+                    frames.add(mediaMetadataRetriever.getFrameAtTime(currentDuration * 1000));
+                    currentDuration += 1000;
+                }
+                mediaMetadataRetriever.close();
+
+                VideoCompressActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        pbTimeline.setVisibility(View.GONE);
+                        timelineView.setVisibility(View.VISIBLE);
+                        timelineAdapter.updateList(frames);
+                        Log.d(TAG, "Bitmap list size: " + frames.size());
+                    }
+                });
+
+            }
+        });
+
     }
 
     private Locale getLocale() {
