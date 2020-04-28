@@ -5,21 +5,53 @@
 
     <Button
         android:id="@+id/selected"
-        android:layout_width="match_parent"
+        android:layout_width="130dp"
         android:layout_height="60dp"
         android:text="select image"/>
 
-    <ImageView
-        android:id="@+id/selectedPictureImageView"
+
+    <Button
+        android:id="@+id/apply"
+        android:layout_width="130dp"
+        android:layout_height="60dp"
+        android:layout_alignParentRight="true"
+        android:text="crop"/>
+
+
+    <FrameLayout
+        android:id="@+id/topview"
         android:layout_below="@+id/selected"
         android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/selectedPictureImageView"
+        android:layout_width="match_parent"
         android:layout_height="300dp"/>
+
+    <com.theartofdev.edmodo.cropper.CropImageView
+        android:id="@+id/cropImageView"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+
+        />
+        
+        
+        <ImageView
+            android:id="@+id/crop_icon"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@drawable/download"
+            android:layout_marginLeft="30dp"
+            android:visibility="gone"
+            android:layout_gravity="bottom|left"/>
+    </FrameLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/imagesrecycler"
         android:layout_marginTop="15dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/selectedPictureImageView"/>
+        android:layout_below="@+id/topview"/>
 
 </RelativeLayout>

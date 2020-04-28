@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.ItemTouchHelper.*
@@ -12,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.sample.compressor.helper.OnStartDragListener
 import com.sample.compressor.helper.SimpleItemTouchHelperCallback
+import com.theartofdev.edmodo.cropper.CropImageView
 import kotlinx.android.synthetic.main.mutlple_image.*
 import kotlinx.android.synthetic.main.test.selected
 import java.io.FileNotFoundException
@@ -21,7 +23,7 @@ import java.io.InputStream
 
 class ChooseImages: AppCompatActivity(), OnStartDragListener {
     var userSelectedImageUriList:ArrayList<Uri>?=null
-   // private var mItemTouchHelper: ItemTouchHelper? = null
+
 
     companion object {
         private const val PICK_IMAGE_REQUEST = 1
@@ -75,8 +77,39 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
         imagesrecycler.layoutManager = horizontalLayout
         itemTouchHelper.attachToRecyclerView(imagesrecycler)
 
+        setClickListeners()
 
+    }
+
+
+    private fun setClickListeners(){
         selected.setOnClickListener { chooseImage() }
+        crop_icon.setOnClickListener { cropImage() }
+        apply.setOnClickListener { getCroppedImage() }
+    }
+
+
+    private fun cropImage(){
+        if(!userSelectedImageUriList.isNullOrEmpty()){
+            selectedPictureImageView.visibility =View.GONE
+            cropImageView.visibility = View.VISIBLE
+            cropImageView.setImageUriAsync(userSelectedImageUriList!![userSelectedImageUriList!!.size-1])
+            //cropImageView.getCroppedImageAsync();
+            //cropImageView.setOnCropImageCompleteListener(CropImageView.OnCropImageCompleteListener())
+        }
+
+    }
+
+
+    private fun getCroppedImage(){
+
+        // on cropped
+        val croppedImage = cropImageView.croppedImage
+        cropImageView.visibility = View.GONE
+        selectedPictureImageView.visibility = View.VISIBLE
+        selectedPictureImageView.setImageBitmap(croppedImage)
+
+
     }
 
 
@@ -98,7 +131,7 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
                     val count = data.clipData?.itemCount; //evaluate the count before the for loop --- otherwise, the count is evaluated every loop.
                     for (i in 0 until data.clipData?.itemCount!!) {
                         fileUri = data.clipData?.getItemAt(i)?.uri
-                        
+
                         if (userSelectedImageUriList == null) {
                             userSelectedImageUriList = ArrayList<Uri>()
                         }
@@ -112,6 +145,7 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
                     }
                     userSelectedImageUriList?.add(fileUri!!)
                 }
+                crop_icon.visibility = View.VISIBLE
 
                 val contentResolver = contentResolver
                 try {
@@ -141,9 +175,6 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
         itemTouchHelper.startDrag(viewHolder!!)
     }
 
-    public fun startDragging(viewHolder: RecyclerView.ViewHolder) {
-        itemTouchHelper.startDrag(viewHolder)
-    }
 
 
 }

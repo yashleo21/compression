@@ -62,4 +62,5 @@ dependencies {
     implementation 'com.google.android.exoplayer:exoplayer:2.11.4'
 
     implementation 'com.appyvet:materialrangebar:1.4.8'
+    api 'com.theartofdev.edmodo:android-image-cropper:2.8.+'
 }
