@@ -93,15 +93,30 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK) {
             if(data!=null) {
-                val fileUri: Uri? = data.data
-                if (userSelectedImageUriList == null) {
-                    userSelectedImageUriList = ArrayList<Uri>()
+                var fileUri: Uri? =null
+                if(data?.clipData != null) {
+                    val count = data.clipData?.itemCount; //evaluate the count before the for loop --- otherwise, the count is evaluated every loop.
+                    for (i in 0 until data.clipData?.itemCount!!) {
+                        fileUri = data.clipData?.getItemAt(i)?.uri
+                        
+                        if (userSelectedImageUriList == null) {
+                            userSelectedImageUriList = ArrayList<Uri>()
+                        }
+                        userSelectedImageUriList?.add(fileUri!!)
+                    }
+                }else {
+
+                    fileUri = data.data
+                    if (userSelectedImageUriList == null) {
+                        userSelectedImageUriList = ArrayList<Uri>()
+                    }
+                    userSelectedImageUriList?.add(fileUri!!)
                 }
-                userSelectedImageUriList!!.add(fileUri!!)
+
                 val contentResolver = contentResolver
                 try {
                     // Open the file input stream by the uri.
-                    val inputStream: InputStream? = contentResolver.openInputStream(fileUri)
+                    val inputStream: InputStream? = contentResolver.openInputStream(fileUri!!)
 
                     // Get the bitmap.
                     val imgBitmap = BitmapFactory.decodeStream(inputStream)
@@ -110,11 +125,6 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
                     selectedPictureImageView.setImageBitmap(imgBitmap)
                     val adapters =  MyAdapter(this, userSelectedImageUriList,this)
                     imagesrecycler.adapter = adapters
-
-                   /* val callback: ItemTouchHelper.Callback = SimpleItemTouchHelperCallback(adapters)
-                    mItemTouchHelper = ItemTouchHelper(callback)
-                    mItemTouchHelper?.attachToRecyclerView(imagesrecycler)*/
-
 
                     inputStream?.close()
                 } catch (ex: FileNotFoundException) {
