@@ -38,7 +38,7 @@ class StartActivity:AppCompatActivity() {
     }
 
     private fun openImageCompressionView(){
-        val `in` = Intent(this, ImageCompressActivity::class.java)
+        val `in` = Intent(this, ChooseImages::class.java)
         startActivity(`in`)
     }
 

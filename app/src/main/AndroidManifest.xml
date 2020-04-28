@@ -33,6 +33,7 @@
         <activity android:name=".VideoCompressActivity"/>
         <activity android:name=".ImageCompressActivity"/>
         <activity android:name=".FileStackActivity"/>
+        <activity android:name=".ChooseImages"/>
 
         <service android:name="com.amazonaws.mobileconnectors.s3.transferutility.TransferService"
             android:enabled="true" />
