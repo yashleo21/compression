@@ -69,24 +69,32 @@
             android:text="No File"/>
     </LinearLayout>
 
-    <TextView android:id="@+id/tv_indicator"
-        android:layout_height="wrap_content"
-        android:layout_width="match_parent"
-        android:layout_marginTop="20dp"
-        android:textColor="@android:color/holo_blue_light"
-        android:textSize="18sp" />
+   <LinearLayout
+       android:layout_width="match_parent"
+       android:layout_height="wrap_content"
+       android:orientation="vertical"
+       android:visibility="gone">
 
-    <TextView android:id="@+id/tv_progress"
-        android:layout_height="wrap_content"
-        android:layout_width="match_parent"
-        android:layout_marginTop="20dp"
-        android:textColor="@android:color/holo_blue_light"
-        android:textSize="18sp" />
+       <TextView android:id="@+id/tv_indicator"
+           android:layout_height="wrap_content"
+           android:layout_width="match_parent"
+           android:layout_marginTop="20dp"
+           android:textColor="@android:color/holo_blue_light"
+           android:textSize="18sp" />
 
-    <ProgressBar android:id="@+id/pb_compress"
-        android:layout_height="40dp"
-        android:layout_width="40dp"
-        android:visibility="invisible"/>
+       <TextView android:id="@+id/tv_progress"
+           android:layout_height="wrap_content"
+           android:layout_width="match_parent"
+           android:layout_marginTop="20dp"
+           android:textColor="@android:color/holo_blue_light"
+           android:textSize="18sp" />
+
+       <ProgressBar android:id="@+id/pb_compress"
+           android:layout_height="40dp"
+           android:layout_width="40dp"
+           android:visibility="invisible"/>
+
+   </LinearLayout>
 
     <TextView
         android:id="@+id/tv_mediaInfo"
@@ -98,26 +106,5 @@
 
     <include
         layout="@layout/layout_timeline"/>
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <ProgressBar
-            android:id="@+id/pb_timeline"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:visibility="gone"
-            android:layout_gravity="center"/>
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_timeline"
-            android:layout_marginTop="20dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"/>
-
-    </FrameLayout>
-
 
 </LinearLayout>

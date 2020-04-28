@@ -251,14 +251,14 @@ public void scheduleVideoConvert(String path, String dest) {
         this.path=sourcePath;
 
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-        retriever.setDataSource(path);
+        //retriever.setDataSource(path);
 
-       /*try{
+       try{
             FileInputStream fis = new FileInputStream(path);
             retriever.setDataSource(fis.getFD());
         }catch(Exception e){
             e.printStackTrace();
-        }*/
+        }
 
         String width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
         String height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);

@@ -1,18 +1,21 @@
 package com.sample.compressor
 
+//import com.filestack.android.FsConstants
+
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
+import android.content.pm.ResolveInfo
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.filestack.FileLink
 import com.filestack.android.FsConstants
-//import com.filestack.android.FsConstants
-
 import kotlinx.android.synthetic.main.start_activity.*
+
 
 class StartActivity:AppCompatActivity() {
 
@@ -70,5 +73,4 @@ class StartActivity:AppCompatActivity() {
         super.onDestroy()
        LocalBroadcastManager.getInstance(this).unregisterReceiver(uploadReceiver!!)
     }
-
 }

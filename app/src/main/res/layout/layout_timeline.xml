@@ -3,12 +3,15 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:background="#fff">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:background="@color/black_translucent">
 
     <RelativeLayout
         android:id="@+id/rl_player_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="match_parent"
+        android:layout_above="@+id/thumb_view"
+        android:layout_marginBottom="20dp">
 
         <com.google.android.exoplayer2.ui.PlayerView
             android:id="@+id/pv_video"
@@ -25,7 +28,8 @@
     </RelativeLayout>
 
 
-    <FrameLayout
+    <!--<FrameLayout
+        android:id="@+id/thumb_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true">
@@ -36,21 +40,48 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:mrb_thumbSize="10dp"/>
-        <ProgressBar
-            android:id="@+id/pb_timeline"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:visibility="gone"
-            android:layout_gravity="center"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_timeline"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:visibility="gone"
+            android:visibility="visible"
             android:orientation="horizontal"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"/>
 
+    </FrameLayout>-->
+
+    <FrameLayout
+        android:id="@+id/thumb_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_timeline"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_gravity="center_vertical"
+            android:orientation="horizontal"
+            tools:listitem="@layout/item_timeline"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"/>
+
+        <View
+            android:id="@+id/positionIcon"
+            android:layout_width="2dp"
+            android:layout_height="40dp"
+            android:visibility="gone"
+            android:layout_gravity="center_vertical"
+            android:contentDescription="@null"
+            android:background="#ffffff" />
+
+        <LinearLayout
+            android:id="@+id/seekBarLayout"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:layout_gravity="center_vertical"
+            android:gravity="bottom"
+            android:orientation="vertical" />
     </FrameLayout>
 
 </RelativeLayout>

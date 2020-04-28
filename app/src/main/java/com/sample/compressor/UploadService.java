@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.media.MediaFormat;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.os.IBinder;
 import android.text.TextUtils;
 import android.util.Log;
@@ -30,12 +31,16 @@ import com.linkedin.android.litr.TransformationListener;
 import com.linkedin.android.litr.analytics.TrackTransformationInfo;
 import com.otaliastudios.transcoder.Transcoder;
 import com.otaliastudios.transcoder.TranscoderListener;
+import com.otaliastudios.transcoder.TranscoderOptions;
+import com.otaliastudios.transcoder.sink.DataSink;
+import com.otaliastudios.transcoder.sink.DefaultDataSink;
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategies;
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy;
 import com.otaliastudios.transcoder.strategy.PassThroughTrackStrategy;
 import com.vincent.videocompressor.VideoCompress;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.time.Instant;
 import java.util.List;
@@ -435,7 +440,23 @@ public class UploadService extends Service implements TransferListener,Transform
                 .keyFrameInterval(5) // interval between key-frames in seconds
                 .build();
         startTime = System.currentTimeMillis();
-        Transcoder.into(Constant.Companion.getDestinationPath())
+
+
+        //fixing crash on Samsung s9
+        File outputDir = new File(getExternalFilesDir(null), Environment.DIRECTORY_DOWNLOADS);
+        //noinspection ResultOfMethodCallIgnored
+        outputDir.mkdir();
+        File mTranscodeOutputFile = null;
+        try {
+            mTranscodeOutputFile = File.createTempFile("transcode_test", ".mp4", outputDir);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        DataSink sink = new DefaultDataSink(mTranscodeOutputFile.getAbsolutePath());
+        Transcoder.into(sink)
+
+        //Normal code starts from here
+        //Transcoder.into(Constant.Companion.getDestinationPath())
                 .addDataSource(Constant.Companion.getSourcePath())
                 .setVideoTrackStrategy(DefaultVideoStrategies.for720x1280())
                 .setAudioTrackStrategy(new PassThroughTrackStrategy())

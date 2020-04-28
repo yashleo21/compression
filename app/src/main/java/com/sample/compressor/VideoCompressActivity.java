@@ -1,6 +1,7 @@
 package com.sample.compressor;
 
 import android.Manifest;
+import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -17,12 +18,16 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -68,6 +73,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static com.sample.compressor.RangeSeekBarView.dpToPx;
+
 
 public class VideoCompressActivity extends AppCompatActivity {
 
@@ -105,18 +112,87 @@ public class VideoCompressActivity extends AppCompatActivity {
     private ExoPlayer exoPlayer;
     private ProgressiveMediaSource dataSource;
     //
-    private RangeBar rangeBar;
+    //private RangeBar rangeBar;
     private ImageView iv_play;
-
-
+    //
     private long startTime, endTime;
 
+    //RangeView vars
+    private RelativeLayout mLinearVideo;
+    private ImageView mPlayView;
+    private RecyclerView mVideoThumbRecyclerView;
+    private RangeSeekBarView mRangeSeekBarView;
+    private LinearLayout mSeekBarLayout;
+    private ImageView mRedProgressIcon;
+    private TextView mVideoShootTipTv;
+    private float mAverageMsPx;//每毫秒所占的px
+    private float averagePxMs;//每px所占用的ms毫秒
+    private Uri mSourceUri;
+    private int mDuration = 0;
+    private boolean isFromRestore = false;
+    //
+    private long mLeftProgressPos, mRightProgressPos;
+    private long mRedProgressBarPos = 0;
+    private long scrollPos = 0;
+    private int mScaledTouchSlop;
+    private int lastScrollX;
+    private boolean isSeeking;
+    private boolean isOverScaledTouchSlop;
+    private int mThumbsTotalCount;
+    private ValueAnimator mRedProgressAnimator;
+    private Handler mAnimationHandler = new Handler();
+    //
+    public static final long MIN_SHOOT_DURATION = 3000L;// 最小剪辑时间3s
+    public static final int VIDEO_MAX_TIME = 60;// 10秒
+    public static final long MAX_SHOOT_DURATION = VIDEO_MAX_TIME * 1000L;//视频最多剪切多长时间10s
+
+    public static final int MAX_COUNT_RANGE = 10;  //seekBar的区域内一共有多少张图片
+    /*private final int SCREEN_WIDTH_FULL = this.getResources().getDisplayMetrics().widthPixels;
+    public final int RECYCLER_VIEW_PADDING = dpToPx(35);
+    public  final int VIDEO_FRAMES_WIDTH = SCREEN_WIDTH_FULL - RECYCLER_VIEW_PADDING * 2;
+    public  final int THUMB_WIDTH = (SCREEN_WIDTH_FULL - RECYCLER_VIEW_PADDING * 2) / VIDEO_MAX_TIME;
+    private  final int THUMB_HEIGHT = dpToPx(50);
+    //
+    private int mMaxWidth = VIDEO_FRAMES_WIDTH;*/
+
+    private final RangeSeekBarView.OnRangeSeekBarChangeListener mOnRangeSeekBarChangeListener = new RangeSeekBarView.OnRangeSeekBarChangeListener() {
+        @Override public void onRangeSeekBarValuesChanged(RangeSeekBarView bar, long minValue, long maxValue, int action, boolean isMin,
+                                                          RangeSeekBarView.Thumb pressedThumb) {
+            Log.d(TAG, "-----minValue----->>>>>>" + minValue);
+            Log.d(TAG, "-----maxValue----->>>>>>" + maxValue);
+            mLeftProgressPos = minValue + scrollPos;
+            mRedProgressBarPos = mLeftProgressPos;
+            mRightProgressPos = maxValue + scrollPos;
+            Log.d(TAG, "-----mLeftProgressPos----->>>>>>" + mLeftProgressPos);
+            Log.d(TAG, "-----mRightProgressPos----->>>>>>" + mRightProgressPos);
+            switch (action) {
+                case MotionEvent.ACTION_DOWN:
+                    isSeeking = false;
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    isSeeking = true;
+                    //seekTo((int) (pressedThumb == RangeSeekBarView.Thumb.MIN ? mLeftProgressPos : mRightProgressPos));
+                    exoPlayer.seekTo(mLeftProgressPos);
+                    break;
+                case MotionEvent.ACTION_UP:
+                    isSeeking = false;
+                    //seekTo((int) mLeftProgressPos);
+                    break;
+                default:
+                    break;
+            }
+
+            mRangeSeekBarView.setStartEndTime(mLeftProgressPos, mRightProgressPos);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.video_layout);
 
+        //
+        outputDir =  this.getExternalFilesDir("compressfolder").getAbsolutePath();
 
         IntentFilter filter = new IntentFilter(CompressorConstant.BROADCAST_COMPRESS_UPLOAD);
         IntentFilter filters = new IntentFilter(CompressorConstant.BROADCAST_STOPPED);
@@ -134,6 +210,8 @@ public class VideoCompressActivity extends AppCompatActivity {
         super.onPostCreate(savedInstanceState);
         initView();
     }
+
+
 
     private void initView() {
         Button btn_select = (Button) findViewById(R.id.btn_select);
@@ -189,13 +267,13 @@ public class VideoCompressActivity extends AppCompatActivity {
 
         mediaInfo = (TextView) findViewById(R.id.tv_mediaInfo);
         timelineView = findViewById(R.id.rv_timeline);
-        pbTimeline = findViewById(R.id.pb_timeline);
+        //pbTimeline = findViewById(R.id.pb_timeline);
         playerView = findViewById(R.id.pv_video);
 
         timelineAdapter = new TimelineAdapter(this);
         timelineView.setAdapter(timelineAdapter);
         //
-        rangeBar = findViewById(R.id.rangebar);
+        //rangeBar = findViewById(R.id.rangebar);
         //
         iv_play = findViewById(R.id.iv_play);
         exoPlayer = new SimpleExoPlayer.Builder(this).build();
@@ -204,7 +282,7 @@ public class VideoCompressActivity extends AppCompatActivity {
 
 
         //
-        rangeBar.setOnRangeBarChangeListener(new RangeBar.OnRangeBarChangeListener() {
+        /*rangeBar.setOnRangeBarChangeListener(new RangeBar.OnRangeBarChangeListener() {
             @Override
             public void onRangeChangeListener(RangeBar rangeBar, int leftPinIndex,
                                               int rightPinIndex, String leftPinValue,
@@ -226,7 +304,7 @@ public class VideoCompressActivity extends AppCompatActivity {
             public void onTouchEnded(RangeBar rangeBar) {
 
             }
-        });
+        });*/
 
         iv_play.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -237,6 +315,47 @@ public class VideoCompressActivity extends AppCompatActivity {
             }
         });
     }
+
+    private void initRangeSeekBarView(MediaMetadataRetriever mediaMetadataRetriever) {
+         final int SCREEN_WIDTH_FULL = this.getResources().getDisplayMetrics().widthPixels;
+         final int RECYCLER_VIEW_PADDING = dpToPx(35);
+         final int VIDEO_FRAMES_WIDTH = SCREEN_WIDTH_FULL - RECYCLER_VIEW_PADDING * 2;
+         final int THUMB_WIDTH = (SCREEN_WIDTH_FULL - RECYCLER_VIEW_PADDING * 2) / VIDEO_MAX_TIME;
+         final int THUMB_HEIGHT = dpToPx(50);
+         //
+         int mMaxWidth = VIDEO_FRAMES_WIDTH;
+        //
+        //if(mRangeSeekBarView != null) return;
+        mSeekBarLayout = findViewById(R.id.seekBarLayout);
+        //
+        mDuration = Integer.parseInt(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+        //
+        mLeftProgressPos = 0;
+        if (mDuration <= MAX_SHOOT_DURATION) {
+            mThumbsTotalCount = MAX_COUNT_RANGE;
+            mRightProgressPos = mDuration;
+        } else {
+            mThumbsTotalCount = (int) (mDuration * 1.0f / (MAX_SHOOT_DURATION * 1.0f) * MAX_COUNT_RANGE);
+            mRightProgressPos = MAX_SHOOT_DURATION;
+        }
+        //mVideoThumbRecyclerView.addItemDecoration(new SpacesItemDecoration2(RECYCLER_VIEW_PADDING, mThumbsTotalCount));
+        mRangeSeekBarView = new RangeSeekBarView(this, mLeftProgressPos, mRightProgressPos);
+        mRangeSeekBarView.setSelectedMinValue(mLeftProgressPos);
+        mRangeSeekBarView.setSelectedMaxValue(mRightProgressPos);
+        mRangeSeekBarView.setStartEndTime(mLeftProgressPos, mRightProgressPos);
+        mRangeSeekBarView.setMinShootTime(MIN_SHOOT_DURATION);
+        mRangeSeekBarView.setNotifyWhileDragging(true);
+        mRangeSeekBarView.setOnRangeSeekBarChangeListener(mOnRangeSeekBarChangeListener);
+        mSeekBarLayout.addView(mRangeSeekBarView);
+        if(mThumbsTotalCount - MAX_COUNT_RANGE>0) {
+            mAverageMsPx = (mDuration - MAX_SHOOT_DURATION) / (float) (mThumbsTotalCount - MAX_COUNT_RANGE);
+        }else{
+            mAverageMsPx = 0f;
+        }
+        averagePxMs = (mMaxWidth * 1.0f / (mRightProgressPos - mLeftProgressPos));
+    }
+
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -269,7 +388,8 @@ public class VideoCompressActivity extends AppCompatActivity {
                     exoPlayer.seekTo(0);
                     exoPlayer.setPlayWhenReady(false);
 
-
+                    //
+                    initRangeSeekBarView(mediaMetadataRetriever);
                 } catch (URISyntaxException e) {
                     e.printStackTrace();
                 } catch (IOException e) {
@@ -307,9 +427,9 @@ public class VideoCompressActivity extends AppCompatActivity {
         mediaInfo.setText(result);
         long duration = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
         //
-        rangeBar.setTickStart(0f);
-        rangeBar.setTickEnd(duration);
-        rangeBar.setTickInterval(1f);
+        //rangeBar.setTickStart(0f);
+        //rangeBar.setTickEnd(duration);
+        //rangeBar.setTickInterval(1f);
 
         /*pbTimeline.setVisibility(View.VISIBLE);
         timelineView.setVisibility(View.GONE);*/
@@ -542,5 +662,9 @@ public class VideoCompressActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(compressReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(restartService);
 
+    }
+
+    public int dpToPx(int dp) {
+        return (int) (dp *getResources().getDisplayMetrics().density + 0.5f);
     }
 }
