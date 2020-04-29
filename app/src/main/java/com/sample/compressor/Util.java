@@ -8,10 +8,12 @@ import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Point;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.view.Display;
 
 import androidx.core.content.ContextCompat;
 
@@ -215,5 +217,18 @@ public class Util {
         } else {
             return true;
         }
+    }
+
+
+    public static int getScreenWidth(Context context) {
+
+        Display display = ((Activity) context).getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        return size.x;
+    }
+
+    public static float getHeightBasedOnAspect(float aspect,Context context) {
+        return getScreenWidth(context)/aspect;
     }
 }

@@ -6,14 +6,15 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.FrameLayout
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.ItemTouchHelper.*
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.sample.compressor.helper.OnStartDragListener
-import com.sample.compressor.helper.SimpleItemTouchHelperCallback
-import com.theartofdev.edmodo.cropper.CropImageView
+import com.squareup.picasso.Picasso
 import kotlinx.android.synthetic.main.mutlple_image.*
 import kotlinx.android.synthetic.main.test.selected
 import java.io.FileNotFoundException
@@ -76,9 +77,20 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
         )
         imagesrecycler.layoutManager = horizontalLayout
         itemTouchHelper.attachToRecyclerView(imagesrecycler)
+        setImageHeight()
 
         setClickListeners()
 
+    }
+
+
+    private fun setImageHeight(){
+        val newHeight: Float = Util.getHeightBasedOnAspect(1.3f,this@ChooseImages)
+        val height =Math.round(newHeight)
+
+        val parms = FrameLayout.LayoutParams(Util.getScreenWidth(this@ChooseImages), height)
+        selectedPictureImageView.layoutParams = parms
+        cropImageView.layoutParams = parms
     }
 
 
@@ -86,6 +98,7 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
         selected.setOnClickListener { chooseImage() }
         crop_icon.setOnClickListener { cropImage() }
         apply.setOnClickListener { getCroppedImage() }
+        fill_icon.setOnClickListener{makeImageAspectFill()}
     }
 
 
@@ -113,11 +126,35 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
     }
 
 
+    private fun makeImageAspectFill(){
+        if(selectedPictureImageView.scaleType == ImageView.ScaleType.CENTER_INSIDE) {
+            selectedPictureImageView.scaleType = ImageView.ScaleType.CENTER_CROP
+        }else{
+            selectedPictureImageView.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        }
+    }
+
+
     private fun chooseImage() {
-        val intent = Intent()
+        //val intent = Intent()
+       // intent.type = "image/*"
+        //intent.type = "image/* video/*"
+        //intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        //intent.action = Intent.ACTION_GET_CONTENT
+       // startActivityForResult(intent, PICK_IMAGE_REQUEST)
+
+
+        //val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        //intent.type = "image/* video/*"
+        //intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        //startActivityForResult(intent, PICK_IMAGE_REQUEST)
+
+
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
         intent.type = "image/*"
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-        intent.action = Intent.ACTION_GET_CONTENT
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*"))
         startActivityForResult(intent, PICK_IMAGE_REQUEST)
     }
 
@@ -135,6 +172,7 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
                         if (userSelectedImageUriList == null) {
                             userSelectedImageUriList = ArrayList<Uri>()
                         }
+                        Log.d("uri-string",fileUri.toString())
                         userSelectedImageUriList?.add(fileUri!!)
                     }
                 }else {
@@ -143,9 +181,10 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
                     if (userSelectedImageUriList == null) {
                         userSelectedImageUriList = ArrayList<Uri>()
                     }
+                    Log.d("uri-string",fileUri.toString())
                     userSelectedImageUriList?.add(fileUri!!)
                 }
-                crop_icon.visibility = View.VISIBLE
+                icons.visibility = View.VISIBLE
 
                 val contentResolver = contentResolver
                 try {
@@ -157,6 +196,9 @@ class ChooseImages: AppCompatActivity(), OnStartDragListener {
 
                     // Show image bitmap in imageview object.
                     selectedPictureImageView.setImageBitmap(imgBitmap)
+                    selectedPictureImageView.scaleType = ImageView.ScaleType.CENTER_INSIDE
+                   // Picasso.with(this).load(fileUri).placeholder(R.mipmap.ic_launcher).into(selectedPictureImageView)
+
                     val adapters =  MyAdapter(this, userSelectedImageUriList,this)
                     imagesrecycler.adapter = adapters
 
