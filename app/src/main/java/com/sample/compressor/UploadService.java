@@ -8,6 +8,7 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.net.Uri;
 import android.os.Build;
@@ -28,6 +29,8 @@ import com.filestack.Progress;
 import com.linkedin.android.litr.MediaTransformer;
 import com.linkedin.android.litr.TransformationListener;
 import com.linkedin.android.litr.analytics.TrackTransformationInfo;
+import com.linkedin.android.litr.io.MediaExtractorMediaSource;
+import com.linkedin.android.litr.io.MediaSource;
 import com.otaliastudios.transcoder.Transcoder;
 import com.otaliastudios.transcoder.TranscoderListener;
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategies;
@@ -220,6 +223,14 @@ public class UploadService extends Service implements TransferListener,Transform
         startTime = System.currentTimeMillis();
         MediaFormat targetVideoFormat = new MediaFormat();
         MediaTransformer mediaTransformer = new MediaTransformer(getApplicationContext());
+
+        try{
+            MediaSource mediaSource = new MediaExtractorMediaSource(this, Uri.parse(Constant.Companion.getSourcePath()));
+            MediaExtractor a = new MediaExtractor();
+        } catch (Exception e) {
+
+        }
+
         mediaTransformer.transform(UUID.randomUUID().toString(),
                 Uri.parse(Constant.Companion.getSourcePath()),
                 Constant.Companion.getDestinationPath(),

@@ -67,6 +67,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 
 public class VideoCompressActivity extends AppCompatActivity {
@@ -80,6 +81,7 @@ public class VideoCompressActivity extends AppCompatActivity {
     private TextView tv_input, tv_output, tv_indicator, tv_progress;
     private String outputDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
     public static final int STORAGE_REQ_CODE = 113;
+
 
     private String inputPath;
     private String outputPath;
@@ -158,6 +160,7 @@ public class VideoCompressActivity extends AppCompatActivity {
         btn_compress.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
                 String destPath = tv_output.getText().toString() + File.separator + "VID_" + new SimpleDateFormat("yyyyMMdd_HHmmss", getLocale()).format(new Date()) + ".mp4";
                 Constant.Companion.setDestinationPath(destPath);
                 Constant.Companion.setSourcePath(tv_input.getText().toString());
@@ -176,6 +179,46 @@ public class VideoCompressActivity extends AppCompatActivity {
 
                 //work manager
                 //startManager();
+            }
+        });
+
+        Button btn_trim = findViewById(R.id.btn_trim);
+        btn_trim.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "Trim clicked");
+                startTime = System.currentTimeMillis();
+                try {
+                    String destPath = tv_output.getText().toString() + File.separator + "VID_" + new SimpleDateFormat("yyyyMMdd_HHmmss", getLocale()).format(new Date()) + ".mp4";
+                    Constant.Companion.setDestinationPath(destPath);
+                    Constant.Companion.setSourcePath(tv_input.getText().toString());
+                    TrimVideoUtils.startTrim(Constant.Companion.getSourcePath(), Constant.Companion.getDestinationPath(), 0L, 10000L, new OnTrimVideoListener() {
+                        @Override
+                        public void onTrimStarted() {
+                        Log.d(TAG, "onTrimStarted");
+                        }
+
+                        @Override
+                        public void getResult(Uri uri) {
+                            long endTime = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTime);
+                            Log.d(TAG, "getResult " + uri+ " TOTAL TIME: " + endTime);
+                        }
+
+                        @Override
+                        public void cancelAction() {
+                            Log.d(TAG, "cancelAction");
+                        }
+
+                        @Override
+                        public void onError(String message) {
+
+                            Log.d(TAG, "onError :" + message);
+                        }
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
             }
         });
 

@@ -24,6 +24,12 @@
             android:layout_width="wrap_content"
             android:textAllCaps="false"
             android:text="Start Compress"/>
+
+        <Button android:id="@+id/btn_trim"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:textAllCaps="false"
+            android:text="Start trim"/>
     </LinearLayout>
 
     <LinearLayout android:layout_height="wrap_content"
