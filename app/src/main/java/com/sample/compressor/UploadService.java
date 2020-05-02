@@ -33,6 +33,8 @@ import com.otaliastudios.transcoder.TranscoderListener;
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategies;
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy;
 import com.otaliastudios.transcoder.strategy.PassThroughTrackStrategy;
+import com.otaliastudios.transcoder.strategy.size.ExactResizer;
+import com.otaliastudios.transcoder.strategy.size.Resizer;
 import com.vincent.videocompressor.VideoCompress;
 
 import java.io.File;
@@ -120,8 +122,9 @@ public class UploadService extends Service implements TransferListener,Transform
                 Log.d("compressor","compress called");
 
                 //compressVideo();
-                //compressVideoWithLitr(); // this is with litr
-                transcodeVideo();
+                compressVideoWithLitr(); // this is with litr
+                //transcodeVideo();
+                //customTranscode();
                 //uploadToS3(); //for uploading to S3
                 //stopSelf();
             }
@@ -214,15 +217,25 @@ public class UploadService extends Service implements TransferListener,Transform
 
 
     private void compressVideoWithLitr(){
-
+        startTime = System.currentTimeMillis();
+        MediaFormat targetVideoFormat = new MediaFormat();
         MediaTransformer mediaTransformer = new MediaTransformer(getApplicationContext());
-        mediaTransformer.transform("video_upload",
+        mediaTransformer.transform(UUID.randomUUID().toString(),
                 Uri.parse(Constant.Companion.getSourcePath()),
                 Constant.Companion.getDestinationPath(),
                 createMediaFormat(),
-                null, this,
+                null,
+                this,
                 GRANULARITY_DEFAULT,
-                null);
+                null
+                );
+//        mediaTransformer.transform("video_upload",
+//                Uri.parse(Constant.Companion.getSourcePath()),
+//                Constant.Companion.getDestinationPath(),
+//                createMediaFormat(),
+//                null, this,
+//                GRANULARITY_DEFAULT,
+//                null);
 
        /* MediaFormat sourceMediaFormat = MediaFormat.createVideoFormat("video/mp4", 1920, 1080);
         sourceMediaFormat.setInteger();
@@ -236,11 +249,10 @@ public class UploadService extends Service implements TransferListener,Transform
 
     @Nullable
     private MediaFormat createMediaFormat() {
-        MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/mp4", 1280, 720);
-        mediaFormat.setString(MediaFormat.KEY_MIME, "video/avc");
+        MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/avc", 1280, 720);
         mediaFormat.setInteger(MediaFormat.KEY_WIDTH, 1280);
         mediaFormat.setInteger(MediaFormat.KEY_HEIGHT, 720);
-        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 5);
+        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 2 * 1000 * 1000);
         mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
         mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
         return mediaFormat;
@@ -414,6 +426,10 @@ public class UploadService extends Service implements TransferListener,Transform
     @Override
     public void onCompleted(@NonNull String id, @Nullable List<TrackTransformationInfo> trackTransformationInfos) {
         Log.d("litr","completed");
+        long endTime = System.currentTimeMillis();
+        long timediff = endTime-startTime;
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(timediff);
+        sendNotification("trancode","transcode complted in "+ seconds +"secs");
     }
 
     @Override
@@ -427,17 +443,20 @@ public class UploadService extends Service implements TransferListener,Transform
     }
 
 
+    //.bitRate(DefaultVideoStrategy.BITRATE_UNKNOWN) // tries to estimate
     private void transcodeVideo(){
+        Resizer resizer = new ExactResizer(720, 1280);
         DefaultVideoStrategy strategy = new DefaultVideoStrategy.Builder()
-                //.bitRate(bitRate)
-                .bitRate(DefaultVideoStrategy.BITRATE_UNKNOWN) // tries to estimate
+                .bitRate(2L * 1000 * 1000)
                 .frameRate(30) // will be capped to the input frameRate
-                .keyFrameInterval(5) // interval between key-frames in seconds
+                .mimeType("video/avc")
+                .addResizer(resizer)
+                .keyFrameInterval(15) // interval between key-frames in seconds
                 .build();
         startTime = System.currentTimeMillis();
         Transcoder.into(Constant.Companion.getDestinationPath())
                 .addDataSource(Constant.Companion.getSourcePath())
-                .setVideoTrackStrategy(DefaultVideoStrategies.for720x1280())
+                .setVideoTrackStrategy(strategy)
                 .setAudioTrackStrategy(new PassThroughTrackStrategy())
                 .setListener(new TranscoderListener() {
                     public void onTranscodeProgress(double progress) {
@@ -458,5 +477,10 @@ public class UploadService extends Service implements TransferListener,Transform
                         Log.d("transcode","transcode failed");
                     }
                 }).transcode();
+    }
+
+    private void customTranscode() {
+        EncodeAndMuxTest encodeAndMuxTest = new EncodeAndMuxTest();
+        encodeAndMuxTest.testEncodeVideoToMp4();
     }
 }
